@@ -11,7 +11,6 @@
 #' Some details and examples of application are also given in the vignette
 #' "Greybox": \code{vignette("greybox","greybox")}
 #'
-#' @template AICRef
 #' @template author
 #' @template keywords
 #'

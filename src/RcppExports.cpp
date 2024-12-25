@@ -12,7 +12,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // polyprod
 RcppExport SEXP polyprod(SEXP x, SEXP y);
-RcppExport SEXP _greybox_polyprod(SEXP xSEXP, SEXP ySEXP) {
+RcppExport SEXP _lightbox_polyprod(SEXP xSEXP, SEXP ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -24,11 +24,11 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_greybox_polyprod", (DL_FUNC) &_greybox_polyprod, 2},
+    {"_lightbox_polyprod", (DL_FUNC) &_lightbox_polyprod, 2},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_greybox(DllInfo *dll) {
+RcppExport void R_init_lightbox(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

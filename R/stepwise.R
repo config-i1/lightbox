@@ -9,7 +9,6 @@
 #' regressor in the sequence.
 #'
 #'
-#' @template AICRef
 #' @template author
 #' @template keywords
 #'
