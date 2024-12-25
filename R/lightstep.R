@@ -99,12 +99,16 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         ## We do it this way to avoid factors expansion into dummies at this stage
     }
 
-    # Check, whether the response is numeric
-    if(!is.numeric(data[[1]])){
-        warning(paste0("The response variable is not numeric! ",
-                       "We will make it numeric, but we cannot promise anything."),
-                call.=FALSE);
-        data[[1]] <- as.numeric(data[[1]]);
+    # Get rid of data.table class
+    if(is.data.table(data)){
+        # Check, whether the response is numeric
+        if(!is.numeric(data[[1]])){
+            warning(paste0("The response variable is not numeric! ",
+                           "We will make it numeric, but we cannot promise anything."),
+                    call.=FALSE);
+            data[[1]] <- as.numeric(data[[1]]);
+        }
+        data <- as.matrix(data);
     }
 
     distribution <- match.arg(distribution);
@@ -163,7 +167,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
             lmCall <- function(formula, ...){
                 varsToUse <- c("(Intercept)",all.vars(formula)[-1]);
                 model <- .lm.fit(data[, varsToUse, drop=FALSE], y);
-                colnames(model$qr) <- varsToUse;
+                # colnames(model$qr) <- varsToUse;
                 return(structure(model,class="lm"));
             }
         # }
@@ -187,9 +191,11 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     nVariables <- ncol(data)-1;
     obsInsample <- sum(rowsSelected);
 
-    # Create data frame to work with
-    data <- as.matrix(data[rowsSelected,]);
-    y <- as.matrix(data[,1, drop=FALSE]);
+    # Create data to work with
+    if(any(!rowsSelected)){
+        data <- data[rowsSelected,];
+    }
+    y <- data[,1, drop=FALSE];
     data[,1] <- 1;
     colnames(data)[1] <- "(Intercept)";
     # listToCall$data <- data[rowsSelected,];
