@@ -1,4 +1,4 @@
-#' Stepwise selection of regressors
+#' Fast and light stepwise selection of regressors
 #'
 #' Function selects variables that give linear regression with the lowest
 #' information criteria. The selection is done stepwise (forward) based on
@@ -13,7 +13,8 @@
 #' @template keywords
 #'
 #' @param data Data frame containing dependant variable in the first column and
-#' the others in the rest.
+#' the others in the rest. The variables need to be numeric, categorical ones are not
+#' supported and should be expanded via the \link[stats]{model.matrix} in advance.
 #' @param ic Information criterion to use.
 #' @param silent If \code{silent=FALSE}, then nothing is silent, everything is
 #' printed out. \code{silent=TRUE} means that nothing is produced.
@@ -41,15 +42,16 @@
 #' @examples
 #'
 #' ### Simple example
-#' obs <- 10000
+#' obs <- 100000
 #' xreg <- matrix(rnorm(200*obs,10,3),obs,200)
 #' xreg <- cbind(100+0.5*xreg[,1]-0.75*xreg[,2]+rnorm(obs,0,3),xreg,rnorm(obs,300,10))
 #' colnames(xreg) <- c("y",paste0("x",c(1:200)),"Noise")
-#' stepwise(xreg)
+#' xreg <- data.table(xreg)
+#' lightstep(xreg)
 #'
 #' @importFrom stats .lm.fit
-#' @export stepwise
-stepwise <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NULL,
+#' @export lightstep
+lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NULL,
                      formula=NULL, subset=NULL,
                      method=c("pearson","kendall","spearman"),
                      distribution=c("dnorm","dlaplace","ds","dgnorm","dlogis","dt","dalaplace",
@@ -157,21 +159,21 @@ stepwise <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NULL
         listToCall$fast <- TRUE;
     }
     else{
-        if(!is.data.frame(data)){
-            lmCall <- function(formula, data){
-                model <- .lm.fit(as.matrix(cbind(1,data[,all.vars(formula)[-1]])),
-                                 as.matrix(data[,all.vars(formula)[1]]));
-                colnames(model$qr) <- c("(Intercept)",all.vars(formula)[-1]);
+        # if(!is.data.frame(data)){
+            lmCall <- function(formula, ...){
+                varsToUse <- c("(Intercept)",all.vars(formula)[-1]);
+                model <- .lm.fit(data[, varsToUse, drop=FALSE], y);
+                colnames(model$qr) <- varsToUse;
                 return(structure(model,class="lm"));
             }
-        }
-        else{
-            lmCall <- function(formula, data){
-                model <- .lm.fit(model.matrix(formula, data=data),
-                                 as.matrix(data[,all.vars(formula)[1]]));
-                return(structure(model,class="lm"));
-            }
-        }
+        # }
+        # else{
+        #     lmCall <- function(formula, data){
+        #         model <- .lm.fit(model.matrix(formula, data=data),
+        #                          as.matrix(data[,all.vars(formula)[1]]));
+        #         return(structure(model,class="lm"));
+        #     }
+        # }
         listToCall <- vector("list");
     }
 
@@ -185,74 +187,28 @@ stepwise <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NULL
     nVariables <- ncol(data)-1;
     obsInsample <- sum(rowsSelected);
 
-    ## Check the variability in the data. If it is none, remove variables
-    noVariability <- vector("logical",nVariables+1);
-    # First column is the response variable, so we assume that it has variability
-    if(is.data.frame(data)){
-        noVariability[1] <- FALSE;
-        for(i in 1:nVariables){
-            noVariability[i+1] <- length(unique(data[[i]]))<=1;
-        }
-        # noVariability[] <- c(FALSE,sapply(apply(data[,-1],2,unique),length)<=1);
-    }
-    else{
-        noVariability[1] <- FALSE;
-        for(i in 1:nVariables){
-            noVariability[i+1] <- length(unique(data[,i]))<=1;
-        }
-        # noVariability[] <- c(FALSE,sapply(as.data.frame(apply(data[,-1],2,unique)),length)<=1);
-    }
-    if(any(noVariability)){
-        if(all(noVariability)){
-            stop("None of exogenous variables has variability. There's nothing to select!",
-                 call.=FALSE);
-        }
-        else{
-            warning("Some exogenous variables did not have any variability. We dropped them out.",
-                    call.=FALSE);
-            nVariables <- sum(!noVariability)-1;
-            variablesNames <- variablesNames[!noVariability];
-        }
-    }
-
     # Create data frame to work with
-    listToCall$data <- as.data.frame(data[rowsSelected,variablesNames]);
+    data <- as.matrix(data[rowsSelected,]);
+    y <- as.matrix(data[,1, drop=FALSE]);
+    data[,1] <- 1;
+    colnames(data)[1] <- "(Intercept)";
+    # listToCall$data <- data[rowsSelected,];
+    # listToCall$y <- listToCall$data[,1];
+    # listToCall$data[,1] <- 1;
+    # colnames(listToCall$data)[1] <- "(Intercept)";
     errors <- matrix(0,obsInsample,1);
-
-    # Remove the data and clean after yourself
-    rm(data);
-    gc(verbose=FALSE);
 
     # Record the names of the response and the explanatory variables
     responseName <- variablesNames[1];
     variablesNames <- variablesNames[-1];
-
-    # Define, which of the variables are factors, excluding the response variable
-    numericData <- sapply(listToCall$data, is.numeric)[-1]
-    # If the value is binary, treat it as a factor # & apply(listToCall$data!=0 & listToCall$data!=1,2,any)[-1];
-    numericData <- numericData & apply(listToCall$data!=0 & listToCall$data!=1,2,any)[-1];
-
-    #### The function-analogue of mcor, but without checks ####
-    mcorFast <- function(x){
-        x <- model.matrix(~x);
-        lmFit <- .lm.fit(x,errors);
-        # abs() is needed for technical purposes - for some reason sometimes this stuff becomes
-        # very small negative (e.g. -1e-16).
-        return(sqrt(abs(1 - sum(residuals(lmFit)^2) / sum((errors-mean(errors))^2))));
-    }
 
     assocValues <- vector("numeric",nVariables);
     names(assocValues) <- variablesNames;
     #### The function that works similar to association(), but faster ####
     assocFast <- function(){
         # Measures of association with numeric data
-        assocValues[which(numericData)] <- suppressWarnings(cor(errors,listToCall$data[,which(numericData)+1],
-                                                                use="complete.obs",method=method));
-
-        # Measures of association with categorical data
-        for(i in which(!numericData)+1){
-            assocValues[i-1] <- suppressWarnings(mcorFast(listToCall$data[[i]]));
-        }
+        assocValues[] <- suppressWarnings(cor(errors,data[,-1],
+                                              use="complete.obs",method=method));
         return(assocValues);
     }
 
@@ -347,7 +303,7 @@ stepwise <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NULL
 
         bestModel <- do.call(lmCall,listToCall);
         # Expand the data from the final model
-        bestModel$data <- cbind(listToCall$data[[1]],model.matrix(bestFormula,listToCall$data)[,-1]);
+        bestModel$data <- cbind(y,listToCall$data[,all.vars(bestFormula)[-1]]);
         if(is.null(colnames(bestModel$data))){
             colnames(bestModel$data) <- c(responseName,varsNames);
         }
@@ -362,7 +318,7 @@ stepwise <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NULL
         # This is number of variables + constant + variance
         bestModel$df <- length(bestModel$coefficients) + 1;
         bestModel$df.residual <- obsInsample - bestModel$df;
-        names(bestModel$coefficients) <- c("(Intercept)",colnames(bestModel$data)[-1]);
+        names(bestModel$coefficients) <- c("(Intercept)",varsNames);
         # Remove redundant bits
         bestModel$effects <- NULL;
         bestModel$qr <- NULL;
