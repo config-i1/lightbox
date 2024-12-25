@@ -1,0 +1,44 @@
+Package: lightbox
+Type: Package
+Title: Toolbox for Forecasting with Regression
+Version: 0.0.1.41001
+Date: 2024-12-25
+Authors@R: c(person("Ivan", "Svetunkov", email = "ivan@svetunkov.com", role = c("aut", "cre"),
+                  comment="Senior Lecturer at Centre for Marketing Analytics and Forecasting, Lancaster University, UK"))
+URL: https://github.com/config-i1/lightbox
+BugReports: https://github.com/config-i1/lightbox/issues
+Language: en-GB
+Description: Implements functions and instruments for regression model building and its
+             application to forecasting. This is a clone of the greybox package, but it
+             is faster and more memory efficient at the cost of being less user friendly.
+             Instead of data.frame, the package uses data.table.
+License: LGPL-2.1
+Depends:
+    R (>= 3.5.0)
+Imports:
+    stats,
+    generics (>= 0.1.2),
+    graphics,
+    utils,
+    data.table,
+    pracma,
+    nloptr,
+    statmod,
+    zoo,
+    texreg,
+    xtable,
+    greybox,
+    methods
+LinkingTo: Rcpp
+Suggests:
+    smooth (>= 3.1.0),
+    doMC,
+    doParallel,
+    foreach,
+    testthat,
+    rmarkdown,
+    knitr
+RoxygenNote: 7.3.2
+VignetteBuilder: knitr
+Encoding: UTF-8
+Roxygen: list(old_usage = TRUE)
