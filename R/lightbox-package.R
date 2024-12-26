@@ -38,6 +38,7 @@
 #' @importFrom graphics abline layout legend lines par points polygon plot
 #' @importFrom stats AIC BIC logLik cov deltat end frequency is.ts cor start time ts var lm as.formula residuals
 #' @importFrom utils packageVersion
+#' @useDynLib lightbox
 NULL
 
 
