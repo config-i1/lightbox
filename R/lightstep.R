@@ -220,8 +220,6 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     ic <- match.arg(ic);
     IC <- switch(ic,"AIC"=AIC,"BIC"=BIC,"BICc"=BICc,AICc);
 
-    method <- method[1];
-
     bestICNotFound <- TRUE;
     allICs <- list(NA);
     # Run the simplest model y = const
