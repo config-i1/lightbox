@@ -5,8 +5,7 @@
 \title{Fast and light stepwise selection of regressors}
 \usage{
 lightstep(data, ic = c("AICc", "AIC", "BIC", "BICc"), silent = TRUE,
-  df = NULL, formula = NULL, subset = NULL, method = c("pearson",
-  "kendall", "spearman"), distribution = c("dnorm", "dlaplace", "ds",
+  df = NULL, subset = NULL, distribution = c("dnorm", "dlaplace", "ds",
   "dgnorm", "dlogis", "dt", "dalaplace", "dlnorm", "dllaplace", "dls",
   "dlgnorm", "dbcnorm", "dinvgauss", "dgamma", "dexp", "dfnorm", "drectnorm",
   "dpois", "dnbinom", "dbeta", "dlogitnorm", "plogis", "pnorm"),
@@ -25,14 +24,8 @@ printed out. \code{silent=TRUE} means that nothing is produced.}
 \item{df}{Number of degrees of freedom to add (should be used if stepwise is
 used on residuals).}
 
-\item{formula}{If provided, then the selection will be done from the listed
-variables in the formula after all the necessary transformations.}
-
 \item{subset}{an optional vector specifying a subset of observations to be
 used in the fitting process.}
-
-\item{method}{Method of correlations calculation. The default is Pearson's
-correlation, which should be applicable to a wide range of data in different scales.}
 
 \item{distribution}{Distribution to pass to \code{alm()}. See \link[greybox]{alm}
 for details.}
