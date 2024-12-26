@@ -211,12 +211,12 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     assocValues <- vector("numeric",nVariables);
     names(assocValues) <- variablesNames;
     #### The function that works similar to association(), but faster ####
-    assocFast <- function(){
-        # Measures of association with numeric data
-        assocValues[] <- suppressWarnings(cor(errors,data[,-1],
-                                              use="complete.obs",method=method));
-        return(assocValues);
-    }
+    # assocFast <- function(){
+    #     # Measures of association with numeric data
+    #     # assocValues[] <- suppressWarnings(cor(errors,data[,-1],
+    #     #                                       use="complete.obs",method=method));
+    #     return(corCpp(errors,data[,-1]));
+    # }
 
     # Select IC
     ic <- match.arg(ic);
@@ -250,10 +250,10 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     m <- 2;
     # Start the loop
     while(bestICNotFound){
-        ourCorrelation <- assocFast();
+        assocValues[] <- corCpp(errors,data[,-1]);
 
-        newElement <- variablesNames[which(abs(ourCorrelation)==
-                                               max(abs(ourCorrelation[!(variablesNames %in% all.vars(as.formula(bestFormula)))]),
+        newElement <- variablesNames[which(abs(assocValues)==
+                                               max(abs(assocValues[!(variablesNames %in% all.vars(as.formula(bestFormula)))]),
                                                                     na.rm=TRUE))[1]];
         # If the newElement is the same as before, stop
         if(is.na(newElement) || any(newElement==all.vars(as.formula(bestFormula)))){
@@ -281,7 +281,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
             cat(paste0("Step ",m-1,". "));
             cat("Formula: "); cat(testFormula);
             cat(", IC: "); cat(currentIC);
-            cat("\nCorrelations: \n"); print(round(ourCorrelation,3)); cat("\n");
+            cat("\nCorrelations: \n"); print(round(assocValues,3)); cat("\n");
         }
         # If IC is greater than the previous, then the previous model is the best
         if(currentIC >= bestIC){

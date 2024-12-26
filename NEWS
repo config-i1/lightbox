@@ -3,3 +3,4 @@ lightbox v0.0.1 (Release data: 2024-12-25)
 
 Changes:
 * The start of the package.
+* lightstep() function, which is a fast and efficient implementation of stepwise trace forward.

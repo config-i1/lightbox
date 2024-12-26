@@ -29,7 +29,7 @@ Imports:
     xtable,
     greybox,
     methods
-LinkingTo: Rcpp
+LinkingTo: Rcpp, RcppArmadillo (>= 0.8.100.0.0)
 Suggests:
     smooth (>= 3.1.0),
     doMC,
