@@ -1,2 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^CRAN-RELEASE$
+man-roxygen
+cran-comments.md
+^CRAN-SUBMISSION$

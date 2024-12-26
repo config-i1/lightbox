@@ -27,18 +27,18 @@ used on residuals).}
 \item{subset}{an optional vector specifying a subset of observations to be
 used in the fitting process.}
 
-\item{distribution}{Distribution to pass to \code{alm()}. See \link[greybox]{alm}
+\item{distribution}{Distribution to pass to \code{lightlm()}. See \link[lightbox]{lightlm}
 for details.}
 
 \item{occurrence}{what distribution to use for occurrence part. See
-\link[greybox]{alm} for details.}
+\link[lightbox]{lightlm} for details.}
 
 \item{...}{This is temporary and is needed in order to capture "silent"
 parameter if it is provided.}
 }
 \value{
-Function returns \code{model} - the final model of the class "alm".
-See \link[greybox]{alm} for details of the output.
+Function returns \code{model} - the final model of the class "lightlm".
+See \link[lightbox]{lightlm} for details of the output.
 }
 \description{
 Function selects variables that give linear regression with the lowest
@@ -47,7 +47,7 @@ partial correlations. This should be a simpler and faster implementation
 than step() function from the `stats' package.
 }
 \details{
-The algorithm uses alm() to fit different models and cor() to select the next
+The algorithm uses lightlm() to fit different models and cor() to select the next
 regressor in the sequence.
 }
 \examples{
@@ -57,13 +57,12 @@ obs <- 100000
 xreg <- matrix(rnorm(200*obs,10,3),obs,200)
 xreg <- cbind(100+0.5*xreg[,1]-0.75*xreg[,2]+rnorm(obs,0,3),xreg,rnorm(obs,300,10))
 colnames(xreg) <- c("y",paste0("x",c(1:200)),"Noise")
-xreg <- data.table(xreg)
 lightstep(xreg)
 
 }
 \seealso{
 \code{\link[stats]{step}, \link[greybox]{xregExpander},
-\link[greybox]{lmCombine}}
+\link[greybox]{stepwise}}
 }
 \author{
 Ivan Svetunkov, \email{ivan@svetunkov.com}

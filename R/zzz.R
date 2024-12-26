@@ -1,6 +1,6 @@
 .onAttach <- function(libname, pkgname) {
     startUpMessage <- paste0("Package \"greybox\", v",packageVersion(pkgname)," loaded.");
-    randomNumber <- trunc(runif(1,1,101));
+    randomNumber <- sample(1:100,1);
     if(randomNumber<=4){
       # startUpMessage <- paste0(startUpMessage,"\n\033[38;2;00;70;20m");
       if(randomNumber==1){
@@ -24,5 +24,5 @@
 }
 
 .onUnload <- function (libpath) {
-  library.dynam.unload("greybox", libpath);
+  library.dynam.unload("lightbox", libpath);
 }

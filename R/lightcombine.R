@@ -3,7 +3,7 @@
 #' Function combines parameters of linear regressions of the first variable
 #' on all the other provided data.
 #'
-#' The algorithm uses alm() to fit different models and then combines the models
+#' The algorithm uses lightlm() to fit different models and then combines the models
 #' based on the selected IC. The parameters are combined so that if they are not
 #' present in some of models, it is assumed that they are equal to zero. Thus,
 #' there is a shrinkage effect in the combination.
@@ -26,12 +26,12 @@
 #' variables in the formula after all the necessary transformations.
 #' @param subset an optional vector specifying a subset of observations to be
 #' used in the fitting process.
-#' @param distribution Distribution to pass to \code{alm()}. See \link[greybox]{alm}
+#' @param distribution Distribution to pass to \code{lightlm()}. See \link[lightbox]{lightlm}
 #' for details.
 #' @param parallel If \code{TRUE}, then the model fitting is done in parallel.
 #' WARNING! Packages \code{foreach} and either \code{doMC} (Linux and Mac only)
 #' or \code{doParallel} are needed in order to run the function in parallel.
-#' @param ... Other parameters passed to \code{alm()}.
+#' @param ... Other parameters passed to \code{lightlm()}.
 #'
 #' @return Function returns \code{model} - the final model of the class
 #' "greyboxC". The list of variables:
@@ -54,7 +54,7 @@
 #' }
 #'
 #' @seealso \code{\link[stats]{step}, \link[greybox]{xregExpander},
-#' \link[greybox]{stepwise}}
+#' \link[lightbox]{lightstep}}
 #'
 #' @examples
 #'
@@ -62,30 +62,6 @@
 #' xreg <- cbind(rnorm(100,10,3),rnorm(100,50,5))
 #' xreg <- cbind(100+0.5*xreg[,1]-0.75*xreg[,2]+rnorm(100,0,3),xreg,rnorm(100,300,10))
 #' colnames(xreg) <- c("y","x1","x2","Noise")
-#' inSample <- xreg[1:80,]
-#' outSample <- xreg[-c(1:80),]
-#' # Combine all the possible models
-#' ourModel <- lightcombine(inSample,bruteforce=TRUE)
-#' predict(ourModel,outSample)
-#' plot(predict(ourModel,outSample))
-#'
-#' ### Fat regression example
-#' xreg <- matrix(rnorm(5000,10,3),50,100)
-#' xreg <- cbind(100+0.5*xreg[,1]-0.75*xreg[,2]+rnorm(50,0,3),xreg,rnorm(50,300,10))
-#' colnames(xreg) <- c("y",paste0("x",c(1:100)),"Noise")
-#' inSample <- xreg[1:40,]
-#' outSample <- xreg[-c(1:40),]
-#' # Combine only the models close to the optimal
-#' ourModel <- lightcombine(inSample, ic="BICc",bruteforce=FALSE)
-#' summary(ourModel)
-#' plot(predict(ourModel, outSample))
-#'
-#' # Combine in parallel - should increase speed in case of big data
-#' \dontrun{ourModel <- lightcombine(inSample, ic="BICc", bruteforce=TRUE, parallel=TRUE)
-#' summary(ourModel)
-#' plot(predict(ourModel, outSample))}
-#'
-#' @importFrom stats dnorm
 #'
 #' @export lightcombine
 lightcombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE, silent=TRUE,
@@ -193,13 +169,13 @@ lightcombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE
     # colnames(data) <- gsub("\`","",colnames(data),ignore.case=TRUE);
     colnames(data) <- make.names(colnames(data), unique=TRUE);
 
-    # Define cases, when to use ALM
+    # Define cases, when to use lightlm
     distribution <- match.arg(distribution);
     if(distribution=="dnorm"){
-        useALM <- FALSE;
+        uselightlm <- FALSE;
     }
     else{
-        useALM <- TRUE;
+        uselightlm <- TRUE;
         if(any(distribution==c("plogis","pnorm"))){
             data[,1] <- (data[,1]!=0)*1;
             ot <- (data[,1]!=0)*1;
@@ -220,9 +196,9 @@ lightcombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE
         rowsSelected <- rep(TRUE,nrow(data));
     }
 
-    # Check occurrence. If it is not "none" then use alm().
-    # if(is.alm(occurrence)){
-    #     useALM <- TRUE;
+    # Check occurrence. If it is not "none" then use lightlm().
+    # if(is.lightlm(occurrence)){
+    #     uselightlm <- TRUE;
     #     rowsSelected <- rowsSelected & (data[,1]!=0);
     # }
     # else{
@@ -234,7 +210,7 @@ lightcombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE
     #     }
     #
     #     if(any(occurrence==c("plogis","pnorm"))){
-    #         useALM <- TRUE;
+    #         uselightlm <- TRUE;
     #         rowsSelected <- rowsSelected | (data[,1]!=0);
     #
     #         occurrenceModel <- lightcombine(data, ic=ic, bruteforce=bruteforce, silent=silent,
@@ -248,8 +224,8 @@ lightcombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE
     IC <- switch(ic,"AIC"=AIC,"BIC"=BIC,"BICc"=BICc,AICc);
 
     # Define what function to use in the estimation
-    if(useALM){
-        lmCall <- alm;
+    if(uselightlm){
+        lmCall <- lightlm;
         listToCall <- list(distribution=distribution, fast=TRUE);
         listToCall <- c(listToCall,ellipsis);
     }
@@ -281,12 +257,12 @@ lightcombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE
         warning("You have more than 14 variables. The computation might take a lot of time.", call.=FALSE, immediate.=TRUE);
     }
 
-    # If this is not bruteforce, then do stepwise first
+    # If this is not bruteforce, then do lightstep first
     if(!bruteforce){
         if(!silent){
             cat("Selecting the best model...\n");
         }
-        ourModel <- stepwise(data, ic=ic, distribution=distribution);
+        ourModel <- lightstep(data, ic=ic, distribution=distribution);
         # If the selected model does not contain variables
         if(length(coef(ourModel))==1){
             return(ourModel);
@@ -373,12 +349,12 @@ lightcombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE
     # Number of variables
     nVariables <- length(exoNames);
 
-    # If nVariables is zero, return a simple model. This might be due to the stepwise returning intercept.
+    # If nVariables is zero, return a simple model. This might be due to the lightstep returning intercept.
     if(nVariables==0){
         warning("No explanatory variables are selected / provided. Fitting the model with intercept only.",
                 call.=FALSE, immediate.=TRUE);
         if(bruteforce){
-            return(alm(as.formula(paste0("`",responseName,"`~1")),listToCall$data,distribution=distribution,...));
+            return(lightlm(as.formula(paste0("`",responseName,"`~1")),listToCall$data,distribution=distribution,...));
         }
         else{
             return(ourModel);
@@ -741,7 +717,7 @@ lightcombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE
                                  call=cl, rank=nVariables+1, data=listToCall$data, mu=mu, scale=scale,
                                  combination=variablesCombinations, other=other, loss=loss,
                                  timeElapsed=Sys.time()-startTime),
-                            class=c("greyboxC","alm","greybox"));
+                            class=c("greyboxC","lightlm","greybox"));
 
     return(finalModel);
 }

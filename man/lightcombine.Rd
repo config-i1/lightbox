@@ -30,14 +30,14 @@ variables in the formula after all the necessary transformations.}
 \item{subset}{an optional vector specifying a subset of observations to be
 used in the fitting process.}
 
-\item{distribution}{Distribution to pass to \code{alm()}. See \link[greybox]{alm}
+\item{distribution}{Distribution to pass to \code{lightlm()}. See \link[lightbox]{lightlm}
 for details.}
 
 \item{parallel}{If \code{TRUE}, then the model fitting is done in parallel.
 WARNING! Packages \code{foreach} and either \code{doMC} (Linux and Mac only)
 or \code{doParallel} are needed in order to run the function in parallel.}
 
-\item{...}{Other parameters passed to \code{alm()}.}
+\item{...}{Other parameters passed to \code{lightlm()}.}
 }
 \value{
 Function returns \code{model} - the final model of the class
@@ -65,7 +65,7 @@ Function combines parameters of linear regressions of the first variable
 on all the other provided data.
 }
 \details{
-The algorithm uses alm() to fit different models and then combines the models
+The algorithm uses lightlm() to fit different models and then combines the models
 based on the selected IC. The parameters are combined so that if they are not
 present in some of models, it is assumed that they are equal to zero. Thus,
 there is a shrinkage effect in the combination.
@@ -79,33 +79,11 @@ Some details and examples of application are also given in the vignette
 xreg <- cbind(rnorm(100,10,3),rnorm(100,50,5))
 xreg <- cbind(100+0.5*xreg[,1]-0.75*xreg[,2]+rnorm(100,0,3),xreg,rnorm(100,300,10))
 colnames(xreg) <- c("y","x1","x2","Noise")
-inSample <- xreg[1:80,]
-outSample <- xreg[-c(1:80),]
-# Combine all the possible models
-ourModel <- lightcombine(inSample,bruteforce=TRUE)
-predict(ourModel,outSample)
-plot(predict(ourModel,outSample))
-
-### Fat regression example
-xreg <- matrix(rnorm(5000,10,3),50,100)
-xreg <- cbind(100+0.5*xreg[,1]-0.75*xreg[,2]+rnorm(50,0,3),xreg,rnorm(50,300,10))
-colnames(xreg) <- c("y",paste0("x",c(1:100)),"Noise")
-inSample <- xreg[1:40,]
-outSample <- xreg[-c(1:40),]
-# Combine only the models close to the optimal
-ourModel <- lightcombine(inSample, ic="BICc",bruteforce=FALSE)
-summary(ourModel)
-plot(predict(ourModel, outSample))
-
-# Combine in parallel - should increase speed in case of big data
-\dontrun{ourModel <- lightcombine(inSample, ic="BICc", bruteforce=TRUE, parallel=TRUE)
-summary(ourModel)
-plot(predict(ourModel, outSample))}
 
 }
 \seealso{
 \code{\link[stats]{step}, \link[greybox]{xregExpander},
-\link[greybox]{stepwise}}
+\link[lightbox]{lightstep}}
 }
 \author{
 Ivan Svetunkov, \email{ivan@svetunkov.com}

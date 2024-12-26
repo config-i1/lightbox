@@ -223,64 +223,6 @@ mtcars2 <- within(mtcars, {
    gear <- factor(gear)
    carb <- factor(carb)
 })
-# The standard model with Log-Normal distribution
-ourModel <- lightlm(mpg~., mtcars2[1:30,], distribution="dlnorm")
-summary(ourModel)
-\donttest{plot(ourModel)}
-# Produce table based on the output for LaTeX
-xtable(summary(ourModel))
-
-# Produce predictions with the one sided interval (upper bound)
-predict(ourModel, mtcars2[-c(1:30),], interval="p", side="u")
-
-# Model with heteroscedasticity (scale changes with the change of qsec)
-\donttest{ourModel <- lightlm(mpg~., mtcars2[1:30,], scale=~qsec)}
-
-### Artificial data for the other examples
-\donttest{xreg <- cbind(rlaplace(100,10,3),rnorm(100,50,5))
-xreg <- cbind(100+0.5*xreg[,1]-0.75*xreg[,2]+rlaplace(100,0,3),xreg,rnorm(100,300,10))
-colnames(xreg) <- c("y","x1","x2","Noise")}
-
-# An example with Laplace distribution
-\donttest{ourModel <- lightlm(y~x1+x2+trend, xreg, subset=c(1:80), distribution="dlaplace")
-summary(ourModel)
-plot(predict(ourModel,xreg[-c(1:80),]))}
-
-# And another one with Asymmetric Laplace distribution (quantile regression)
-# with optimised alpha
-\donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="dalaplace")}
-
-# An example with AR(1) order
-\donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="dnorm", orders=c(1,0,0))
-summary(ourModel)
-plot(predict(ourModel,xreg[-c(1:80),]))}
-
-### Examples with the count data
-\donttest{xreg[,1] <- round(exp(xreg[,1]-70),0)}
-
-# Negative Binomial distribution
-\donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="dnbinom")
-summary(ourModel)
-predict(ourModel,xreg[-c(1:80),],interval="p",side="u")}
-
-# Poisson distribution
-\donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="dpois")
-summary(ourModel)
-predict(ourModel,xreg[-c(1:80),],interval="p",side="u")}
-
-
-### Examples with binary response variable
-\donttest{xreg[,1] <- round(xreg[,1] / (1 + xreg[,1]),0)}
-
-# Logistic distribution (logit regression)
-\donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="plogis")
-summary(ourModel)
-plot(predict(ourModel,xreg[-c(1:80),],interval="c"))}
-
-# Normal distribution (probit regression)
-\donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="pnorm")
-summary(ourModel)
-plot(predict(ourModel,xreg[-c(1:80),],interval="p"))}
 
 }
 \seealso{

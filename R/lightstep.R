@@ -5,7 +5,7 @@
 #' partial correlations. This should be a simpler and faster implementation
 #' than step() function from the `stats' package.
 #'
-#' The algorithm uses alm() to fit different models and cor() to select the next
+#' The algorithm uses lightlm() to fit different models and cor() to select the next
 #' regressor in the sequence.
 #'
 #'
@@ -22,31 +22,31 @@
 #' used on residuals).
 #' @param subset an optional vector specifying a subset of observations to be
 #' used in the fitting process.
-#' @param distribution Distribution to pass to \code{alm()}. See \link[greybox]{alm}
+#' @param distribution Distribution to pass to \code{lightlm()}. See \link[lightbox]{lightlm}
 #' for details.
 #' @param occurrence what distribution to use for occurrence part. See
-#' \link[greybox]{alm} for details.
+#' \link[lightbox]{lightlm} for details.
 #' @param ... This is temporary and is needed in order to capture "silent"
 #' parameter if it is provided.
 #'
-#' @return Function returns \code{model} - the final model of the class "alm".
-#' See \link[greybox]{alm} for details of the output.
+#' @return Function returns \code{model} - the final model of the class "lightlm".
+#' See \link[lightbox]{lightlm} for details of the output.
 #'
 #' @seealso \code{\link[stats]{step}, \link[greybox]{xregExpander},
-#' \link[greybox]{lmCombine}}
+#' \link[greybox]{stepwise}}
 #'
 #' @examples
 #'
 #' ### Simple example
-#' obs <- 100000
+#' obs <- 1000
 #' xreg <- matrix(rnorm(200*obs,10,3),obs,200)
 #' xreg <- cbind(100+0.5*xreg[,1]-0.75*xreg[,2]+rnorm(obs,0,3),xreg,rnorm(obs,300,10))
 #' colnames(xreg) <- c("y",paste0("x",c(1:200)),"Noise")
-#' xreg <- data.table(xreg)
 #' lightstep(xreg)
 #'
 #' @importFrom stats .lm.fit
 #' @importFrom greybox is.occurrence AICc BICc nparam
+#' @importFrom data.table data.table is.data.table
 #' @export lightstep
 lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NULL,
                       subset=NULL,
@@ -134,7 +134,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     if(is.null(occurrence)){
         occurrence <- "none";
     }
-    # Check occurrence. If it is not "none" then use alm().
+    # Check occurrence. If it is not "none" then use lightlm().
     if(is.occurrence(occurrence)){
         useALM[] <- TRUE;
         rowsSelected[] <- rowsSelected & (data[,1]!=0);
@@ -147,7 +147,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         }
     }
 
-    # If something is passed in the ellipsis, use alm()
+    # If something is passed in the ellipsis, use lightlm()
     if(length(list(...))>0){
         useALM[] <- TRUE;
     }
@@ -155,7 +155,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     listToCall <- list(...);
     # Define what function to use in the estimation
     if(useALM){
-        lmCall <- alm;
+        lmCall <- lightlm;
         listToCall$distribution <- distribution;
         listToCall$loss <- loss;
         listToCall$fast <- TRUE;
@@ -327,13 +327,13 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         bestModel$qraux <- NULL;
         bestModel$pivot <- NULL;
         bestModel$tol <- NULL;
-        # Form the pseudocall to alm
-        bestModel$call <- quote(alm(formula=bestFormula, data=data, distribution="dnorm"));
+        # Form the pseudocall to lightlm
+        bestModel$call <- quote(lightlm(formula=bestFormula, data=data, distribution="dnorm"));
         bestModel$call$formula <- bestFormula;
         bestModel$subset <- rep(TRUE, obsInsample);
         bestModel$scale <- sqrt(sum(bestModel$residuals^2) / obsInsample);
         bestModel$loss <- loss;
-        class(bestModel) <- c("alm","greybox");
+        class(bestModel) <- c("lightlm","greybox");
     }
     else{
         listToCall$formula <- bestFormula;
@@ -342,10 +342,10 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         listToCall$loss <- loss;
         listToCall$occurrence <- occurrence;
         listToCall$fast <- TRUE;
-        bestModel <- do.call("alm", listToCall,
+        bestModel <- do.call("lightlm", listToCall,
                              envir = parent.frame());
         bestModel$call$occurrence <- substitute(occurrence);
-        class(bestModel) <- c("alm","greybox");
+        class(bestModel) <- c("lightlm","greybox");
         if(any(distribution==c("plogis","pnorm"))){
             class(bestModel) <- c(class(bestModel),"occurrence");
         }

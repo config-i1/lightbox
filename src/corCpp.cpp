@@ -1,9 +1,10 @@
 #include <RcppArmadillo.h>
-#include <Rcpp.h>
 // [[Rcpp::depends(RcppArmadillo)]]
+
 using namespace Rcpp;
 
-/* # Function allows to multiply polynomials */
+/* # This is the correlation implemented in C++ - consumes less memory */
+//' @importFrom Rcpp evalCpp
 // [[Rcpp::export]]
 arma::mat corCpp(arma::vec const &y, arma::mat const &x){
     return arma::cor(y, x);
