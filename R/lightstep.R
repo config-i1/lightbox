@@ -46,7 +46,7 @@
 #' lightstep(xreg)
 #'
 #' @importFrom stats .lm.fit
-#' @importFrom greybox is.occurrence AICc BICc
+#' @importFrom greybox is.occurrence AICc BICc nparam
 #' @export lightstep
 lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NULL,
                       subset=NULL,

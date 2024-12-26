@@ -65,7 +65,7 @@
 #' inSample <- xreg[1:80,]
 #' outSample <- xreg[-c(1:80),]
 #' # Combine all the possible models
-#' ourModel <- lmCombine(inSample,bruteforce=TRUE)
+#' ourModel <- lightcombine(inSample,bruteforce=TRUE)
 #' predict(ourModel,outSample)
 #' plot(predict(ourModel,outSample))
 #'
@@ -76,19 +76,19 @@
 #' inSample <- xreg[1:40,]
 #' outSample <- xreg[-c(1:40),]
 #' # Combine only the models close to the optimal
-#' ourModel <- lmCombine(inSample, ic="BICc",bruteforce=FALSE)
+#' ourModel <- lightcombine(inSample, ic="BICc",bruteforce=FALSE)
 #' summary(ourModel)
 #' plot(predict(ourModel, outSample))
 #'
 #' # Combine in parallel - should increase speed in case of big data
-#' \dontrun{ourModel <- lmCombine(inSample, ic="BICc", bruteforce=TRUE, parallel=TRUE)
+#' \dontrun{ourModel <- lightcombine(inSample, ic="BICc", bruteforce=TRUE, parallel=TRUE)
 #' summary(ourModel)
 #' plot(predict(ourModel, outSample))}
 #'
 #' @importFrom stats dnorm
 #'
-#' @export lmCombine
-lmCombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE, silent=TRUE,
+#' @export lightcombine
+lightcombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE, silent=TRUE,
                       formula=NULL, subset=NULL,
                       distribution=c("dnorm","dlaplace","ds","dgnorm","dlogis","dt","dalaplace",
                                      "dlnorm","dllaplace","dls","dlgnorm","dbcnorm",
@@ -237,7 +237,7 @@ lmCombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE, s
     #         useALM <- TRUE;
     #         rowsSelected <- rowsSelected | (data[,1]!=0);
     #
-    #         occurrenceModel <- lmCombine(data, ic=ic, bruteforce=bruteforce, silent=silent,
+    #         occurrenceModel <- lightcombine(data, ic=ic, bruteforce=bruteforce, silent=silent,
     #                                      distribution=occurrence, parallel=parallel, ...);
     #         occurrenceModel$call <- cl;
     #     }
@@ -430,7 +430,7 @@ lmCombine <- function(data, ic=c("AICc","AIC","BIC","BICc"), bruteforce=FALSE, s
         if(nparam(ourModel)<14){
             listToCall$data <- listToCall$data[,c(responseName,bestExoNames),drop=FALSE];
             colnames(listToCall$data) <- c(responseNameOriginal,bestExoNamesOriginal);
-            ourModel <- lmCombine(listToCall$data, ic=ic,
+            ourModel <- lightcombine(listToCall$data, ic=ic,
                                    bruteforce=TRUE, silent=silent, distribution=distribution, parallel=parallel, ...);
             ourModel$call <- cl;
             return(ourModel);

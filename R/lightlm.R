@@ -35,7 +35,7 @@
 #'
 #' This function can be considered as an analogue of \link[stats]{glm}, but with the
 #' focus on time series. This is why, for example, the function has \code{orders} parameter
-#' for ARIMA and produces time series analysis plots with \code{plot(alm(...))}.
+#' for ARIMA and produces time series analysis plots with \code{plot(lightlm(...))}.
 #'
 #' This function is slower than \code{lm}, because it relies on likelihood estimation
 #' of parameters, hessian calculation and matrix multiplication. So think twice when
@@ -43,10 +43,8 @@
 #'
 #' The estimation is done via the maximisation of likelihood of a selected distribution,
 #' so the number of estimated parameters always includes the scale. Thus the number of degrees
-#' of freedom of the model in case of \code{alm} will typically be lower than in the case of
+#' of freedom of the model in case of \code{lightlm} will typically be lower than in the case of
 #' \code{lm}.
-#'
-#' See more details and examples in the vignette for "ALM": \code{vignette("alm","greybox")}
 #'
 #' @template author
 #' @template keywords
@@ -94,15 +92,15 @@
 #' \code{lossFunction <- function(actual, fitted, B, xreg) return(mean(abs(actual-fitted)))}
 #' \code{loss=lossFunction}
 #'
-#' See \code{vignette("alm","greybox")} for some details on losses and distributions.
+#' See \code{vignette("lightlm","greybox")} for some details on losses and distributions.
 #' @param occurrence what distribution to use for occurrence variable. Can be
 #' \code{"none"}, then nothing happens; \code{"plogis"} - then the logistic
-#' regression using \code{alm()} is estimated for the occurrence part;
-#' \code{"pnorm"} - then probit is constructed via \code{alm()} for the
+#' regression using \code{lightlm()} is estimated for the occurrence part;
+#' \code{"pnorm"} - then probit is constructed via \code{lightlm()} for the
 #' occurrence part. In both of the latter cases, the formula used is the same
 #' as the formula for the sizes. Alternatively, you can provide the formula here,
-#' and \code{alm} will estimate logistic occurrence model with that formula.
-#' Finally, an "alm" model can be provided and its estimates will be used in
+#' and \code{lightlm} will estimate logistic occurrence model with that formula.
+#' Finally, an "lightlm" model can be provided and its estimates will be used in
 #' the model construction.
 #'
 #' If this is not \code{"none"}, then the model is estimated
@@ -160,7 +158,7 @@
 #' \link[nloptr]{nloptr.print.options}.
 #'
 #' @return Function returns \code{model} - the final model of the class
-#' "alm", which contains:
+#' "lightlm", which contains:
 #' \itemize{
 #' \item coefficients - estimated parameters of the model,
 #' \item FI - Fisher Information of parameters of the model. Returned only when \code{FI=TRUE},
@@ -205,7 +203,7 @@
 #'    carb <- factor(carb)
 #' })
 #' # The standard model with Log-Normal distribution
-#' ourModel <- alm(mpg~., mtcars2[1:30,], distribution="dlnorm")
+#' ourModel <- lightlm(mpg~., mtcars2[1:30,], distribution="dlnorm")
 #' summary(ourModel)
 #' \donttest{plot(ourModel)}
 #' # Produce table based on the output for LaTeX
@@ -215,7 +213,7 @@
 #' predict(ourModel, mtcars2[-c(1:30),], interval="p", side="u")
 #'
 #' # Model with heteroscedasticity (scale changes with the change of qsec)
-#' \donttest{ourModel <- alm(mpg~., mtcars2[1:30,], scale=~qsec)}
+#' \donttest{ourModel <- lightlm(mpg~., mtcars2[1:30,], scale=~qsec)}
 #'
 #' ### Artificial data for the other examples
 #' \donttest{xreg <- cbind(rlaplace(100,10,3),rnorm(100,50,5))
@@ -223,16 +221,16 @@
 #' colnames(xreg) <- c("y","x1","x2","Noise")}
 #'
 #' # An example with Laplace distribution
-#' \donttest{ourModel <- alm(y~x1+x2+trend, xreg, subset=c(1:80), distribution="dlaplace")
+#' \donttest{ourModel <- lightlm(y~x1+x2+trend, xreg, subset=c(1:80), distribution="dlaplace")
 #' summary(ourModel)
 #' plot(predict(ourModel,xreg[-c(1:80),]))}
 #'
 #' # And another one with Asymmetric Laplace distribution (quantile regression)
 #' # with optimised alpha
-#' \donttest{ourModel <- alm(y~x1+x2, xreg, subset=c(1:80), distribution="dalaplace")}
+#' \donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="dalaplace")}
 #'
 #' # An example with AR(1) order
-#' \donttest{ourModel <- alm(y~x1+x2, xreg, subset=c(1:80), distribution="dnorm", orders=c(1,0,0))
+#' \donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="dnorm", orders=c(1,0,0))
 #' summary(ourModel)
 #' plot(predict(ourModel,xreg[-c(1:80),]))}
 #'
@@ -240,12 +238,12 @@
 #' \donttest{xreg[,1] <- round(exp(xreg[,1]-70),0)}
 #'
 #' # Negative Binomial distribution
-#' \donttest{ourModel <- alm(y~x1+x2, xreg, subset=c(1:80), distribution="dnbinom")
+#' \donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="dnbinom")
 #' summary(ourModel)
 #' predict(ourModel,xreg[-c(1:80),],interval="p",side="u")}
 #'
 #' # Poisson distribution
-#' \donttest{ourModel <- alm(y~x1+x2, xreg, subset=c(1:80), distribution="dpois")
+#' \donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="dpois")
 #' summary(ourModel)
 #' predict(ourModel,xreg[-c(1:80),],interval="p",side="u")}
 #'
@@ -254,12 +252,12 @@
 #' \donttest{xreg[,1] <- round(xreg[,1] / (1 + xreg[,1]),0)}
 #'
 #' # Logistic distribution (logit regression)
-#' \donttest{ourModel <- alm(y~x1+x2, xreg, subset=c(1:80), distribution="plogis")
+#' \donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="plogis")
 #' summary(ourModel)
 #' plot(predict(ourModel,xreg[-c(1:80),],interval="c"))}
 #'
 #' # Normal distribution (probit regression)
-#' \donttest{ourModel <- alm(y~x1+x2, xreg, subset=c(1:80), distribution="pnorm")
+#' \donttest{ourModel <- lightlm(y~x1+x2, xreg, subset=c(1:80), distribution="pnorm")
 #' summary(ourModel)
 #' plot(predict(ourModel,xreg[-c(1:80),],interval="p"))}
 #'
@@ -270,8 +268,8 @@
 #' @importFrom stats plogis
 #' @importFrom statmod dinvgauss
 #' @importFrom stats arima
-#' @export alm
-alm <- function(formula, data, subset, na.action,
+#' @export lightlm
+lightlm <- function(formula, data, subset, na.action,
                 distribution=c("dnorm","dlaplace","ds","dgnorm","dlogis","dt","dalaplace",
                                "dlnorm","dllaplace","dls","dlgnorm","dbcnorm",
                                "dinvgauss","dgamma","dexp",
@@ -1058,7 +1056,7 @@ alm <- function(formula, data, subset, na.action,
         occurrenceProvided <- FALSE;
         occurrenceFormula <- occurrence;
         occurrence <- "plogis";
-        occurrenceType <- "alm";
+        occurrenceType <- "lightlm";
     }
     # See if the occurrence model is provided, and whether we need to treat the data as intermittent
     else if(is.occurrence(occurrence)){
@@ -1072,7 +1070,7 @@ alm <- function(formula, data, subset, na.action,
         occurrenceProvided <- TRUE;
         occurrence <- list(occurrence="provided", fitted=occurrence,
                            logLik=0, distribution="none", df=0);
-        class(occurrence) <- c("occurrence","alm","greybox");
+        class(occurrence) <- c("occurrence","lightlm","greybox");
         occurrenceType <- "provided";
     }
     else{
@@ -1086,7 +1084,7 @@ alm <- function(formula, data, subset, na.action,
 
         if(any(occurrence==c("plogis","pnorm"))){
             occurrenceModel <- TRUE;
-            occurrenceType <- "alm";
+            occurrenceType <- "lightlm";
         }
         else{
             occurrenceModel <- FALSE;
@@ -1202,7 +1200,7 @@ alm <- function(formula, data, subset, na.action,
            # If the names only contain numbers
            any(suppressWarnings(!is.na(as.numeric(all.vars(formula)))))){
             warning("The names of your variables contain special characters ",
-                    "(such as numbers, spaces, comas, brackets etc). alm() might not work properly. ",
+                    "(such as numbers, spaces, comas, brackets etc). lightlm() might not work properly. ",
                     "It is recommended to use `make.names()` function to fix the names of variables.",
                     call.=FALSE);
             formula <- as.formula(paste0(gsub(paste0("`",all.vars(formula)[1],"`"),
@@ -2255,7 +2253,7 @@ alm <- function(formula, data, subset, na.action,
         dataNew[,all.vars(occurrenceFormula)[1]] <- (ot)*1;
 
         if(!occurrenceProvided){
-            occurrence <- do.call("alm", list(formula=occurrenceFormula, data=dataNew,
+            occurrence <- do.call("lightlm", list(formula=occurrenceFormula, data=dataNew,
                                               distribution=occurrence, ar=arOrder, i=iOrder));
             if(exists("dataSubstitute",inherits=FALSE)){
                 occurrence$call$data <- as.name(paste0(deparse(dataSubstitute),collapse=""));
@@ -2347,7 +2345,7 @@ alm <- function(formula, data, subset, na.action,
                                  data=dataWork, terms=dataTerms,
                                  occurrence=occurrence, subset=subset, other=ellipsis, B=B,
                                  timeElapsed=Sys.time()-startTime),
-                            class=c("alm","greybox"));
+                            class=c("lightlm","greybox"));
 
     # If this is an occurrence model, flag it as one
     if(any(distribution==c("plogis","pnorm"))){
