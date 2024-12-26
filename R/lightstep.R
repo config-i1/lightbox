@@ -62,6 +62,8 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
 
     # Start measuring the time of calculations
     startTime <- Sys.time();
+    
+    cl <- match.call();
 
     if(is.null(df)){
         df <- 0;
@@ -304,19 +306,20 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         listToCall$formula <- bestFormula;
 
         bestModel <- do.call(lmCall,listToCall);
+        bestModel$data <- dataSubstitute;
         # Expand the data from the final model
-        bestModel$data <- cbind(y,listToCall$data[,all.vars(bestFormula)[-1]]);
-        if(is.null(colnames(bestModel$data))){
-            colnames(bestModel$data) <- c(responseName,varsNames);
-        }
-        else{
-            colnames(bestModel$data)[1] <- responseName;
-        }
+        # bestModel$data <- cbind(y,listToCall$data[,all.vars(bestFormula)[-1]]);
+        # if(is.null(colnames(bestModel$data))){
+        #     colnames(bestModel$data) <- c(responseName,varsNames);
+        # }
+        # else{
+        #     colnames(bestModel$data)[1] <- responseName;
+        # }
         rm(listToCall);
 
         bestModel$distribution <- distribution;
         bestModel$logLik <- bestModel$lossValue <- logLik(bestModel);
-        bestModel$mu <- bestModel$fitted <- bestModel$data[,1] - c(bestModel$residuals);
+        bestModel$mu <- bestModel$fitted <- y - c(bestModel$residuals);
         # This is number of variables + constant + variance
         bestModel$df <- length(bestModel$coefficients) + 1;
         bestModel$df.residual <- obsInsample - bestModel$df;
@@ -330,6 +333,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         # Form the pseudocall to lightlm
         bestModel$call <- quote(lightlm(formula=bestFormula, data=data, distribution="dnorm"));
         bestModel$call$formula <- bestFormula;
+        bestModel$call$data <- cl$data;
         bestModel$subset <- rep(TRUE, obsInsample);
         bestModel$scale <- sqrt(sum(bestModel$residuals^2) / obsInsample);
         bestModel$loss <- loss;
