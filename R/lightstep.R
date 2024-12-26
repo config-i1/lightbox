@@ -70,29 +70,31 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     dataSubstitute <- substitute(data);
 
     # Use formula to form the data frame for further selection
-    if(!is.null(formula) || !is.null(subset)){
-        # If subset is provided, but not formula, generate one
-        if(is.null(formula)){
-            formula <- as.formula(paste0(colnames(data)[1],"~."));
-        }
-
-        # Do model.frame manipulations
-        mf <- match.call(expand.dots = FALSE);
-        mf <- mf[c(1L, match(c("formula", "data", "subset"), names(mf), 0L))];
-        mf$drop.unused.levels <- TRUE;
-        mf[[1L]] <- quote(stats::model.frame);
-
-        if(!is.data.frame(data)){
-            mf$data <- as.data.frame(data);
-        }
-        # Evaluate data frame to do transformations of variables
-        data <- eval(mf, parent.frame());
-        responseName <- colnames(data)[1];
-
-        # Remove variables that have "-x" in the formula
-        dataTerms <- terms(data);
-        data <- data[,c(responseName, colnames(attr(dataTerms,"factors")))];
-        ## We do it this way to avoid factors expansion into dummies at this stage
+    if(!is.null(subset)){
+        data <- data[subset,];
+        
+        # # If subset is provided, but not formula, generate one
+        # if(is.null(formula)){
+        #     formula <- as.formula(paste0(colnames(data)[1],"~."));
+        # }
+        # 
+        # # Do model.frame manipulations
+        # mf <- match.call(expand.dots = FALSE);
+        # mf <- mf[c(1L, match(c("formula", "data", "subset"), names(mf), 0L))];
+        # mf$drop.unused.levels <- TRUE;
+        # mf[[1L]] <- quote(stats::model.frame);
+        # 
+        # if(!is.data.frame(data)){
+        #     mf$data <- as.data.frame(data);
+        # }
+        # # Evaluate data frame to do transformations of variables
+        # data <- eval(mf, parent.frame());
+        # responseName <- colnames(data)[1];
+        # 
+        # # Remove variables that have "-x" in the formula
+        # dataTerms <- terms(data);
+        # data <- data[,c(responseName, colnames(attr(dataTerms,"factors")))];
+        # ## We do it this way to avoid factors expansion into dummies at this stage
     }
 
     # Get rid of data.table class
