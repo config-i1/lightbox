@@ -331,7 +331,9 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
 
         bestModel$distribution <- distribution;
         bestModel$logLik <- bestModel$lossValue <- logLik(bestModel);
-        bestModel$mu <- bestModel$fitted <- y - c(bestModel$residuals);
+        # Remove residuals, fitted etc. They are potentially heavy
+        bestModel$residuals <- NULL
+        # bestModel$mu <- bestModel$fitted <- y - c(bestModel$residuals);
         # This is number of variables + constant + variance
         bestModel$df <- length(bestModel$coefficients) + 1;
         bestModel$df.residual <- obsInsample - bestModel$df;
@@ -346,7 +348,8 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         bestModel$call <- quote(lightlm(formula=bestFormula, data=data, distribution="dnorm"));
         bestModel$call$formula <- bestFormula;
         bestModel$call$data <- cl$data;
-        bestModel$subset <- rep(TRUE, obsInsample);
+        # Only save subset if it was provided
+        bestModel$subset <- subset;
         bestModel$scale <- sqrt(sum(bestModel$residuals^2) / obsInsample);
         bestModel$loss <- loss;
         class(bestModel) <- c("lightlm","greybox");
