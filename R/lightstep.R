@@ -171,6 +171,8 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
             lmCall <- function(formula, ...){
                 varsToUse <- c("(Intercept)",all.vars(formula)[-1]);
                 model <- .lm.fit(data[, varsToUse, drop=FALSE], y);
+                # Drop unimportant bits
+                model$qr <- model$weights <- model$effects <- model$fitted.values <- NULL
                 # colnames(model$qr) <- varsToUse;
                 return(structure(model,class="lm"));
             }
