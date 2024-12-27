@@ -323,7 +323,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         # else{
         #     colnames(bestModel$data)[1] <- responseName;
         # }
-        rm(listToCall, data, y);
+        rm(listToCall, data, y, errors);
 
         bestModel$distribution <- distribution;
         bestModel$logLik <- bestModel$lossValue <- logLik(bestModel);
