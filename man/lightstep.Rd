@@ -53,7 +53,7 @@ regressor in the sequence.
 \examples{
 
 ### Simple example
-obs <- 100000
+obs <- 1000
 xreg <- matrix(rnorm(200*obs,10,3),obs,200)
 xreg <- cbind(100+0.5*xreg[,1]-0.75*xreg[,2]+rnorm(obs,0,3),xreg,rnorm(obs,300,10))
 colnames(xreg) <- c("y",paste0("x",c(1:200)),"Noise")

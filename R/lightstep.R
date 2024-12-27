@@ -244,15 +244,24 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         cat("Formula: "); cat(testFormula);
         cat(", IC: "); cat(currentIC); cat("\n\n");
     }
+    # This is not needed, but might be useful to have just in case
+    varsToIgnore <- c("(Intercept)");
+    newElement <- NULL;
 
     m <- 2;
     # Start the loop
     while(bestICNotFound){
-        assocValues[] <- corCpp(errors,data[,-1]);
+        varsToIgnore <- c(varsToIgnore, newElement);
+        varsToTry <- !(variablesNames %in% varsToIgnore)
+        
+        # The FALSE in the indices is for the intercept
+        assocValues[varsToTry] <- cor(errors,data[,c(FALSE,varsToTry)]);
 
-        newElement <- variablesNames[which(abs(assocValues)==
-                                               max(abs(assocValues[!(variablesNames %in% all.vars(as.formula(bestFormula)))]),
-                                                                    na.rm=TRUE))[1]];
+        # newElement <- variablesNames[which(abs(assocValues)==
+        #                                        max(abs(assocValues[!(variablesNames %in% all.vars(as.formula(bestFormula)))]),
+        #                                                             na.rm=TRUE))[1]];
+        newElement <- variablesNames[which.max(abs(assocValues))];
+        
         # If the newElement is the same as before, stop
         if(is.na(newElement) || any(newElement==all.vars(as.formula(bestFormula)))){
             bestICNotFound <- FALSE;
@@ -291,6 +300,9 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
             errors[] <- residuals(testModel);
         }
         names(currentIC) <- newElement;
+        # Reset the value not to choose it again
+        assocValues[newElement] <- 0;
+        
         allICs[[m]] <- currentIC;
         m <- m+1;
     }
