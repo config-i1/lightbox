@@ -74,6 +74,8 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     # Use formula to form the data frame for further selection
     if(!is.null(subset)){
         data <- data[subset,];
+        # Clean memory to save yourself from crushing
+        gc();
         
         # # If subset is provided, but not formula, generate one
         # if(is.null(formula)){
@@ -109,6 +111,8 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
             data[[1]] <- as.numeric(data[[1]]);
         }
         data <- as.matrix(data);
+        # Clean memory to save yourself from crushing
+        gc();
     }
 
     distribution <- match.arg(distribution);
@@ -198,11 +202,10 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     y <- data[,1, drop=FALSE];
     data[,1] <- 1;
     colnames(data)[1] <- "(Intercept)";
-    # listToCall$data <- data[rowsSelected,];
-    # listToCall$y <- listToCall$data[,1];
-    # listToCall$data[,1] <- 1;
-    # colnames(listToCall$data)[1] <- "(Intercept)";
     errors <- matrix(0,obsInsample,1);
+    
+    # Clean memory to save yourself from crushing
+    gc();
 
     # Record the names of the response and the explanatory variables
     responseName <- variablesNames[1];
@@ -210,13 +213,6 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
 
     assocValues <- vector("numeric",nVariables);
     names(assocValues) <- variablesNames;
-    #### The function that works similar to association(), but faster ####
-    # assocFast <- function(){
-    #     # Measures of association with numeric data
-    #     # assocValues[] <- suppressWarnings(cor(errors,data[,-1],
-    #     #                                       use="complete.obs",method=method));
-    #     return(corCpp(errors,data[,-1]));
-    # }
 
     # Select IC
     ic <- match.arg(ic);
@@ -318,7 +314,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         listToCall$formula <- bestFormula;
 
         bestModel <- do.call(lmCall,listToCall);
-        bestModel$data <- dataSubstitute;
+        # bestModel$data <- dataSubstitute;
         # Expand the data from the final model
         # bestModel$data <- cbind(y,listToCall$data[,all.vars(bestFormula)[-1]]);
         # if(is.null(colnames(bestModel$data))){
