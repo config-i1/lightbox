@@ -345,6 +345,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         # Form the pseudocall to lightlm
         bestModel$call <- quote(lightlm(formula=bestFormula, data=data, distribution="dnorm"));
         bestModel$call$formula <- bestFormula;
+        environment(bestModel$call$formula) <- emptyenv();
         bestModel$call$data <- cl$data;
         # bestModel$call$data <- cl$data;
         # Only save subset if it was provided
