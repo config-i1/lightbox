@@ -314,7 +314,7 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         listToCall$formula <- bestFormula;
 
         bestModel <- do.call(lmCall,listToCall);
-        # bestModel$data <- dataSubstitute;
+        bestModel$data <- dataSubstitute;
         # Expand the data from the final model
         # bestModel$data <- cbind(y,listToCall$data[,all.vars(bestFormula)[-1]]);
         # if(is.null(colnames(bestModel$data))){
@@ -323,10 +323,11 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         # else{
         #     colnames(bestModel$data)[1] <- responseName;
         # }
-        rm(listToCall);
+        rm(listToCall, data, y);
 
         bestModel$distribution <- distribution;
         bestModel$logLik <- bestModel$lossValue <- logLik(bestModel);
+        bestModel$scale <- sqrt(sum(bestModel$residuals^2) / obsInsample);
         # Remove residuals, fitted etc. They are potentially heavy
         bestModel$residuals <- NULL
         # bestModel$mu <- bestModel$fitted <- y - c(bestModel$residuals);
@@ -339,14 +340,15 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         bestModel$qr <- NULL;
         bestModel$qraux <- NULL;
         bestModel$pivot <- NULL;
+        bestModel$pivoted <- NULL;
         bestModel$tol <- NULL;
         # Form the pseudocall to lightlm
         bestModel$call <- quote(lightlm(formula=bestFormula, data=data, distribution="dnorm"));
         bestModel$call$formula <- bestFormula;
         bestModel$call$data <- cl$data;
+        # bestModel$call$data <- cl$data;
         # Only save subset if it was provided
         bestModel$subset <- subset;
-        bestModel$scale <- sqrt(sum(bestModel$residuals^2) / obsInsample);
         bestModel$loss <- loss;
         class(bestModel) <- c("lightlm","greybox");
     }
