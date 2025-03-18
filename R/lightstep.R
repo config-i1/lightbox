@@ -204,7 +204,8 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
     y <- data[,1, drop=FALSE];
     data[,1] <- 1;
     colnames(data)[1] <- "(Intercept)";
-    errors <- matrix(0,obsInsample,1);
+    # errors <- matrix(0,obsInsample,1);
+    errors <- vector("numeric",obsInsample);
     
     # Clean memory to save yourself from crushing
     gc();
@@ -346,10 +347,10 @@ lightstep <- function(data, ic=c("AICc","AIC","BIC","BICc"), silent=TRUE, df=NUL
         bestModel$tol <- NULL;
         # Form the pseudocall to lightlm
         bestModel$call <- quote(lightlm(formula=bestFormula, data=data, distribution="dnorm"));
-        bestModel$call$formula <- bestFormula;
-        environment(bestModel$call$formula) <- emptyenv();
+        # Substitute the formula with environment with a basic one. Saves space
+        bestModel$call$formula <- str2lang(paste0(as.character(bestFormula)[c(2,1,3)], collapse=" "));
+        # environment(bestModel$call$formula) <- emptyenv();
         bestModel$call$data <- cl$data;
-        # bestModel$call$data <- cl$data;
         # Only save subset if it was provided
         bestModel$subset <- subset;
         bestModel$loss <- loss;
