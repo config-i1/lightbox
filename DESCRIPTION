@@ -22,6 +22,7 @@ Imports:
     graphics,
     utils,
     data.table,
+    Matrix,
     pracma,
     nloptr,
     statmod,

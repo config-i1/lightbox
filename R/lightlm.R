@@ -111,8 +111,6 @@
 #' changing variance (i.e. in case of heteroscedasticity). The log-link is used for
 #' the scale (i.e. take exponent of obtained fitted value for the scale, so that
 #' it is always positive).
-#' @param orders the orders of ARIMA to include in the model. Only non-seasonal
-#' orders are accepted.
 #' @param parameters vector of parameters of the linear model. When \code{NULL}, it
 #' is estimated.
 #' @param fast if \code{TRUE}, then the function won't check whether
@@ -214,18 +212,17 @@
 #' @importFrom greybox determination is.scale polyprod xregExpander
 #' @export lightlm
 lightlm <- function(formula, data, subset, na.action,
-                distribution=c("dnorm","dlaplace","ds","dgnorm","dlogis","dt","dalaplace",
-                               "dlnorm","dllaplace","dls","dlgnorm","dbcnorm",
-                               "dinvgauss","dgamma","dexp",
-                               "dfnorm","drectnorm",
-                               "dpois","dnbinom","dbinom","dgeom",
-                               "dbeta","dlogitnorm",
-                               "plogis","pnorm"),
-                loss=c("likelihood","MSE","MAE","HAM","LASSO","RIDGE","ROLE"),
-                occurrence=c("none","plogis","pnorm"),
-                scale=NULL,
-                orders=c(0,0,0),
-                parameters=NULL, fast=FALSE, ...){
+                    distribution=c("dnorm","dlaplace","ds","dgnorm","dlogis","dt","dalaplace",
+                                   "dlnorm","dllaplace","dls","dlgnorm","dbcnorm",
+                                   "dinvgauss","dgamma","dexp",
+                                   "dfnorm","drectnorm",
+                                   "dpois","dnbinom","dbinom","dgeom",
+                                   "dbeta","dlogitnorm",
+                                   "plogis","pnorm"),
+                    loss=c("likelihood","MSE","MAE","HAM","LASSO","RIDGE","ROLE"),
+                    occurrence=c("none","plogis","pnorm"),
+                    scale=NULL,
+                    parameters=NULL, fast=FALSE, ...){
 # Useful stuff for dnbinom: https://scialert.net/fulltext/?doi=ajms.2010.1.15
 
     # Start measuring the time of calculations
@@ -801,18 +798,8 @@ lightlm <- function(formula, data, subset, na.action,
     #### Define the rest of parameters ####
     ellipsis <- list(...);
     # ellipsis <- match.call(expand.dots = FALSE)$`...`;
-    # If arima was provided in the old style
-    if(orders[1]==0 && !is.null(ellipsis[["ar", exact=TRUE]])){
-        orders[1] <- ellipsis[["ar", exact=TRUE]];
-    }
-    if(orders[2]==0 && !is.null(ellipsis[["i", exact=TRUE]])){
-        orders[2] <- ellipsis[["i", exact=TRUE]];
-    }
-    if(orders[3]==0 && !is.null(ellipsis[["ma", exact=TRUE]])){
-        orders[3] <- ellipsis[["ma", exact=TRUE]];
-    }
 
-    # Parameters for distributions
+    #### Parameters for distributions ####
     if(distribution=="dalaplace"){
         if(is.null(ellipsis$alpha)){
             ellipsis$alpha <- 0.5
@@ -896,7 +883,8 @@ lightlm <- function(formula, data, subset, na.action,
             alpha <- nu <- size <- sigma <- shape <- lambdaBC <- nu <- 0.5;
             aParameterProvided <- TRUE;
     }
-    # LASSO loss
+    
+    #### Loss functions parameters ####
     if(any(loss==c("LASSO","RIDGE"))){
         if(is.null(ellipsis$lambda)){
             warning("You have not provided lambda parameter. We will set it to zero.", call.=FALSE);
@@ -917,7 +905,7 @@ lightlm <- function(formula, data, subset, na.action,
         }
     }
 
-    # Fisher Information
+    #### Fisher Information ####
     if(is.null(ellipsis$FI)){
         FI <- FALSE;
     }
@@ -925,6 +913,7 @@ lightlm <- function(formula, data, subset, na.action,
         FI <- ellipsis$FI;
     }
 
+    #### Parameters passed to nloptr ####
     # Starting values for the optimiser
     if(is.null(ellipsis$B)){
         B <- NULL;
@@ -986,7 +975,7 @@ lightlm <- function(formula, data, subset, na.action,
         stepSize <- ellipsis$stepSize;
     }
 
-    #### Occurrence part ####
+    #### Occurrence part checks ####
     occurrenceFormula <- NULL;
     occurrenceType <- "none";
     # If occurrence is not provided, then set it to "none"
@@ -1059,45 +1048,6 @@ lightlm <- function(formula, data, subset, na.action,
         loss <- "likelihood";
     }
 
-    #### ARIMA orders ####
-    arOrder <- orders[1];
-    iOrder <- orders[2];
-    #### !!! This is not implemented yet
-    maOrder <- orders[3];
-    #### !!!
-    # Check AR, I and form ARI order
-    if(arOrder<0){
-        warning("ar must be positive. Taking the absolute value.", call.=FALSE);
-        arOrder <- abs(arOrder);
-    }
-    if(length(iOrder)>1){
-        warning("i must be positive. Taking the absolute value.", call.=FALSE);
-        iOrder <- abs(iOrder);
-    }
-    ariOrder <- arOrder + iOrder;
-    ariModel <- ifelseFast(ariOrder>0, TRUE, FALSE);
-
-    # Create polynomials for the ar, i and ma orders
-    if(arOrder>0){
-        poly1 <- rep(1,arOrder+1);
-    }
-    else{
-        poly1 <- c(1,1);
-    }
-    if(iOrder>0){
-        poly2 <- c(1,-1);
-        if(iOrder>1){
-            for(j in 1:(iOrder-1)){
-                poly2 <- polyprod(poly2,c(1,-1));
-            }
-        }
-    }
-    if(maOrder>0){
-        poly3 <- rep(1,maOrder+1);
-    }
-    else{
-        poly3 <- c(1,1);
-    }
 
     #### Form the necessary matrices ####
     # Call similar to lm in order to form appropriate data.frame
@@ -1107,112 +1057,102 @@ lightlm <- function(formula, data, subset, na.action,
     mf$drop.unused.levels <- TRUE;
     mf[[1L]] <- quote(stats::model.frame);
 
-    # If data is provided explicitly, check it
-    if(exists("data",inherits=FALSE,mode="numeric") || exists("data",inherits=FALSE,mode="list")){
-        if(!is.data.frame(data)){
-            data <- as.data.frame(data);
-        }
-        else{
-            dataOrders <- unlist(lapply(data,is.ordered));
-            # If there is an ordered factor, remove the bloody ordering!
-            if(any(dataOrders)){
-                data[dataOrders] <- lapply(data[dataOrders],function(x) factor(x, levels=levels(x), ordered=FALSE));
-            }
-        }
-        mf$data <- data;
-        rm(data);
-
-        # If there are NaN values, remove the respective observations
-        if(any(sapply(mf$data,is.nan))){
-            warning("There are NaN values in the data. This might cause problems. Removing these observations.", call.=FALSE);
-            NonNaNValues <- !apply(sapply(mf$data,is.nan),1,any);
-            # If subset was not provided, change it
-            if(is.null(mf$subset)){
-                mf$subset <- NonNaNValues
-            }
-            else{
-                mf$subset <- NonNaNValues & mf$subset;
-            }
-            dataContainsNaNs <- TRUE;
-        }
-        else{
-            dataContainsNaNs <- FALSE;
-        }
-
-        # If there are spaces in names, give a warning
-        if(any(grepl("[^A-Za-z0-9,;._-]", all.vars(formula))) ||
-           # If the names only contain numbers
-           any(suppressWarnings(!is.na(as.numeric(all.vars(formula)))))){
-            warning("The names of your variables contain special characters ",
-                    "(such as numbers, spaces, comas, brackets etc). lightlm() might not work properly. ",
-                    "It is recommended to use `make.names()` function to fix the names of variables.",
-                    call.=FALSE);
-            formula <- as.formula(paste0(gsub(paste0("`",all.vars(formula)[1],"`"),
-                                              make.names(all.vars(formula)[1]),
-                                              all.vars(formula)[1]),"~",
-                                         paste0(mapply(gsub, paste0("`",all.vars(formula)[-1],"`"),
-                                                       make.names(all.vars(formula)[-1]),
-                                                       labels(terms(formula))),
-                                                collapse="+")));
-            mf$formula <- formula;
-        }
-        # Fix names of variables. Switch this off to avoid conflicts between formula and data, when numbers are used
-        colnames(mf$data) <- make.names(colnames(mf$data), unique=TRUE);
-
-        # If the data is a matrix / data.frame, get the nrows
-        if(!is.null(dim(mf$data))){
-            obsAll <- nrow(mf$data);
-        }
-        else{
-            obsAll <- length(mf$data);
-        }
-
-        # If the user asked for trend, but it's not in the data, add it
-        if(any(all.vars(formula)=="trend") && all(colnames(mf$data)!="trend")){
-            mf$data <- cbind(mf$data,trend=c(1:obsAll));
-        }
+    # # If data is provided explicitly, check it
+    # if(exists("data",inherits=FALSE,mode="numeric") || exists("data",inherits=FALSE,mode="list")){
+    #     if(!is.data.frame(data)){
+    #         data <- as.data.frame(data);
+    #     }
+    #     else{
+    #         dataOrders <- unlist(lapply(data,is.ordered));
+    #         # If there is an ordered factor, remove the bloody ordering!
+    #         if(any(dataOrders)){
+    #             data[dataOrders] <- lapply(data[dataOrders],function(x) factor(x, levels=levels(x), ordered=FALSE));
+    #         }
+    #     }
+    #     mf$data <- data;
+    #     rm(data);
+    # 
+    #     # If there are NaN values, remove the respective observations
+    #     if(any(sapply(mf$data,is.nan))){
+    #         warning("There are NaN values in the data. This might cause problems. Removing these observations.", call.=FALSE);
+    #         NonNaNValues <- !apply(sapply(mf$data,is.nan),1,any);
+    #         # If subset was not provided, change it
+    #         if(is.null(mf$subset)){
+    #             mf$subset <- NonNaNValues
+    #         }
+    #         else{
+    #             mf$subset <- NonNaNValues & mf$subset;
+    #         }
+    #         dataContainsNaNs <- TRUE;
+    #     }
+    #     else{
+    #         dataContainsNaNs <- FALSE;
+    #     }
+    # 
+    #     # If there are spaces in names, give a warning
+    #     if(any(grepl("[^A-Za-z0-9,;._-]", all.vars(formula))) ||
+    #        # If the names only contain numbers
+    #        any(suppressWarnings(!is.na(as.numeric(all.vars(formula)))))){
+    #         warning("The names of your variables contain special characters ",
+    #                 "(such as numbers, spaces, comas, brackets etc). lightlm() might not work properly. ",
+    #                 "It is recommended to use `make.names()` function to fix the names of variables.",
+    #                 call.=FALSE);
+    #         formula <- as.formula(paste0(gsub(paste0("`",all.vars(formula)[1],"`"),
+    #                                           make.names(all.vars(formula)[1]),
+    #                                           all.vars(formula)[1]),"~",
+    #                                      paste0(mapply(gsub, paste0("`",all.vars(formula)[-1],"`"),
+    #                                                    make.names(all.vars(formula)[-1]),
+    #                                                    labels(terms(formula))),
+    #                                             collapse="+")));
+    #         mf$formula <- formula;
+    #     }
+    #     # Fix names of variables. Switch this off to avoid conflicts between formula and data, when numbers are used
+    #     colnames(mf$data) <- make.names(colnames(mf$data), unique=TRUE);
+    # 
+    #     # If the data is a matrix / data.frame, get the nrows
+    #     if(!is.null(dim(mf$data))){
+    #         obsAll <- nrow(mf$data);
+    #     }
+    #     else{
+    #         obsAll <- length(mf$data);
+    #     }
+    # 
+    #     # If the user asked for trend, but it's not in the data, add it
+    #     if(any(all.vars(formula)=="trend") && all(colnames(mf$data)!="trend")){
+    #         mf$data <- cbind(mf$data,trend=c(1:obsAll));
+    #     }
+    # }
+    # else{
+    #     dataContainsNaNs <- FALSE;
+    # }
+    
+    # Form the design matrix
+    # If the data is provided explicitly and is just a (sparse) matrix, don't do model.frame
+    if((exists("data",inherits=FALSE,mode="numeric") || exists("data",inherits=FALSE,mode="list")) &&
+       (is.matrix(data) || inherits(x, "dgCMatrix"))){
+        matrixXreg <- sparse.model.matrix(formula, data=data);
     }
     else{
-        dataContainsNaNs <- FALSE;
+        matrixXreg <- sparse.model.matrix(formula, data=eval(mf, parent.frame()));
     }
-
+    # Update the formula to get the response only (cheaper than above)
+    mf$formula <- update.formula(mf$formula, ~1);
+    y <- model.response(eval(mf, parent.frame()));
+    # Get the original formula
+    mf$formula <- cl$formula;
+    
     responseName <- all.vars(formula)[1];
-
-    # Make recursive fitted for missing values in case of occurrence model.
-    recursiveModel <- occurrenceModel && ariModel;
-    # In case of plogis and pnorm, all the ARI values need to be refitted
-    if(any(distribution==c("plogis","pnorm")) && ariModel){
-        recursiveModel <- TRUE;
-    }
-
-    dataWork <- eval(mf, parent.frame());
-    dataTerms <- terms(dataWork);
-    cl$formula <- formula(dataTerms);
-    # Make this numeric, to address potential issues with zoo + data.table
-    y <- as.numeric(dataWork[,1]);
-
-    interceptIsNeeded <- attr(dataTerms,"intercept")!=0;
-    # Create a model from the provided stuff. This way we can work with factors
-    dataWork <- model.matrix(dataWork,data=dataWork);
-    obsInsample <- nrow(dataWork);
-
+    interceptIsNeeded <- (matrixXreg@Dimnames[[2]][1]=="(Intercept)");
+    obsInsample <- nrow(matrixXreg);
+    
+    
     # matrixXreg should not contain 1 for the further checks
     if(interceptIsNeeded){
-        variablesNames <- colnames(dataWork)[-1];
-        matrixXreg <- as.matrix(dataWork[,-1,drop=FALSE]);
-        # Include response to the data
-        # dataWork <- cbind(y,dataWork[,-1,drop=FALSE]);
+        variablesNames <- colnames(matrixXreg)[-1];
     }
     else{
-        variablesNames <- colnames(dataWork);
-        matrixXreg <- dataWork;
-        # Include response to the data
-        # dataWork <- cbind(y,dataWork);
-        warning("You have asked not to include intercept in the model. We will try to fit the model, ",
-                "but this is a very naughty thing to do, and we cannot guarantee that it will work...", call.=FALSE);
+        variablesNames <- colnames(matrixXreg);
     }
-    # colnames(dataWork) <- c(responseName, variablesNames);
-    rm(dataWork);
 
     nVariables <- length(variablesNames);
     colnames(matrixXreg) <- variablesNames;
@@ -1222,19 +1162,14 @@ lightlm <- function(formula, data, subset, na.action,
         subset <- rep(TRUE, obsInsample);
     }
     else{
-        if(dataContainsNaNs){
-            subset <- mf$subset[NonNaNValues];
-        }
-        else{
-            subset <- mf$subset;
-        }
+        subset <- mf$subset;
     }
 
     mu <- vector("numeric", obsInsample);
-    yFitted <- vector("numeric", obsInsample);
-    errors <- vector("numeric", obsInsample);
+    # yFitted <- vector("numeric", obsInsample);
     ot <- vector("logical", obsInsample);
 
+    #### Check distribution parameter ####
     if(any(distribution==c("dexp","dlnorm","dllaplace","dls","dbcnorm","dchisq",
                            "dfnorm","drectnorm",
                            "dgeom","dpois","dnbinom","dbinom",
@@ -1272,6 +1207,7 @@ lightlm <- function(formula, data, subset, na.action,
         size <- length(unique(y))-1;
     }
 
+    #### Occurrence and CDFs ####
     if(any(distribution==c("plogis","pnorm"))){
         CDF <- TRUE;
     }
@@ -1308,95 +1244,95 @@ lightlm <- function(formula, data, subset, na.action,
         obsZero <- 0;
     }
 
-    if(!fast){
-        #### Checks of the exogenous variables ####
-        # Remove the data for which sd=0
-        noVariability <- vector("logical",nVariables);
-        noVariability[] <- apply((matrixXreg==matrix(matrixXreg[1,],obsInsample,nVariables,byrow=TRUE))[otU,,drop=FALSE],2,all);
-        if(any(noVariability)){
-            if(all(noVariability)){
-                warning("None of exogenous variables has variability. Fitting the straight line.",
-                        call.=FALSE);
-                matrixXreg <- matrix(1,obsInsample,1);
-                nVariables <- 1;
-                variablesNames <- "(Intercept)";
-            }
-            else{
-                if(!occurrenceModel && !CDF){
-                    warning("Some exogenous variables did not have any variability. We dropped them out.",
-                            call.=FALSE);
-                }
-                matrixXreg <- matrixXreg[,!noVariability,drop=FALSE];
-                nVariables <- ncol(matrixXreg);
-                variablesNames <- variablesNames[!noVariability];
-            }
-        }
+    # if(!fast){
+    #     #### Checks of the exogenous variables ####
+    #     # Remove the data for which sd=0
+    #     noVariability <- vector("logical",nVariables);
+    #     noVariability[] <- apply((matrixXreg==matrix(matrixXreg[1,],obsInsample,nVariables,byrow=TRUE))[otU,,drop=FALSE],2,all);
+    #     if(any(noVariability)){
+    #         if(all(noVariability)){
+    #             warning("None of exogenous variables has variability. Fitting the straight line.",
+    #                     call.=FALSE);
+    #             matrixXreg <- matrix(1,obsInsample,1);
+    #             nVariables <- 1;
+    #             variablesNames <- "(Intercept)";
+    #         }
+    #         else{
+    #             if(!occurrenceModel && !CDF){
+    #                 warning("Some exogenous variables did not have any variability. We dropped them out.",
+    #                         call.=FALSE);
+    #             }
+    #             matrixXreg <- matrixXreg[,!noVariability,drop=FALSE];
+    #             nVariables <- ncol(matrixXreg);
+    #             variablesNames <- variablesNames[!noVariability];
+    #         }
+    #     }
+    # 
+    #     # Check the multicollinearity. Don't do it for LASSO / RIDGE
+    #     if(all(loss!=c("LASSO","RIDGE"))){
+    #         corThreshold <- 0.999;
+    #         if(nVariables>1){
+    #             # Check perfectly correlated cases
+    #             corMatrix <- cor(matrixXreg[otU,,drop=FALSE],use="pairwise.complete.obs");
+    #             corHigh <- upper.tri(corMatrix) & abs(corMatrix)>=corThreshold;
+    #             if(any(corHigh)){
+    #                 removexreg <- unique(which(corHigh,arr.ind=TRUE)[,1]);
+    #                 matrixXreg <- matrixXreg[,-removexreg,drop=FALSE];
+    #                 nVariables <- ncol(matrixXreg);
+    #                 variablesNames <- colnames(matrixXreg);
+    #                 if(!occurrenceModel && !CDF){
+    #                     warning("Some exogenous variables were perfectly correlated. We've dropped them out.",
+    #                             call.=FALSE);
+    #                 }
+    #             }
+    #         }
+    # 
+    #         # Do these checks only when intercept is needed. Otherwise in case of dummies this might cause chaos
+    #         if(nVariables>1 & interceptIsNeeded){
+    #             # Check dummy variables trap
+    #             detHigh <- suppressWarnings(determination(matrixXreg[otU,,drop=FALSE]))>=corThreshold;
+    #             if(any(detHigh)){
+    #                 while(any(detHigh)){
+    #                     removexreg <- which(detHigh>=corThreshold)[1];
+    #                     matrixXreg <- matrixXreg[,-removexreg,drop=FALSE];
+    #                     nVariables <- ncol(matrixXreg);
+    #                     variablesNames <- colnames(matrixXreg);
+    # 
+    #                     detHigh <- suppressWarnings(determination(matrixXreg))>=corThreshold;
+    #                 }
+    #                 if(!occurrenceModel){
+    #                     warning("Some combinations of exogenous variables were perfectly correlated. We've dropped them out.",
+    #                             call.=FALSE);
+    #                 }
+    #             }
+    #         }
+    #     }
+    # 
+    #     #### Finish forming the matrix of exogenous variables ####
+    #     # Remove the redundant dummies, if there are any
+    #     varsToLeave <- apply(matrixXreg[otU,,drop=FALSE],2,var)!=0;
+    #     matrixXreg <- matrixXreg[,varsToLeave,drop=FALSE];
+    #     variablesNames <- variablesNames[varsToLeave];
+    #     nVariables <- length(variablesNames);
+    # }
 
-        # Check the multicollinearity. Don't do it for LASSO / RIDGE
-        if(all(loss!=c("LASSO","RIDGE"))){
-            corThreshold <- 0.999;
-            if(nVariables>1){
-                # Check perfectly correlated cases
-                corMatrix <- cor(matrixXreg[otU,,drop=FALSE],use="pairwise.complete.obs");
-                corHigh <- upper.tri(corMatrix) & abs(corMatrix)>=corThreshold;
-                if(any(corHigh)){
-                    removexreg <- unique(which(corHigh,arr.ind=TRUE)[,1]);
-                    matrixXreg <- matrixXreg[,-removexreg,drop=FALSE];
-                    nVariables <- ncol(matrixXreg);
-                    variablesNames <- colnames(matrixXreg);
-                    if(!occurrenceModel && !CDF){
-                        warning("Some exogenous variables were perfectly correlated. We've dropped them out.",
-                                call.=FALSE);
-                    }
-                }
-            }
-
-            # Do these checks only when intercept is needed. Otherwise in case of dummies this might cause chaos
-            if(nVariables>1 & interceptIsNeeded){
-                # Check dummy variables trap
-                detHigh <- suppressWarnings(determination(matrixXreg[otU,,drop=FALSE]))>=corThreshold;
-                if(any(detHigh)){
-                    while(any(detHigh)){
-                        removexreg <- which(detHigh>=corThreshold)[1];
-                        matrixXreg <- matrixXreg[,-removexreg,drop=FALSE];
-                        nVariables <- ncol(matrixXreg);
-                        variablesNames <- colnames(matrixXreg);
-
-                        detHigh <- suppressWarnings(determination(matrixXreg))>=corThreshold;
-                    }
-                    if(!occurrenceModel){
-                        warning("Some combinations of exogenous variables were perfectly correlated. We've dropped them out.",
-                                call.=FALSE);
-                    }
-                }
-            }
-        }
-
-        #### Finish forming the matrix of exogenous variables ####
-        # Remove the redundant dummies, if there are any
-        varsToLeave <- apply(matrixXreg[otU,,drop=FALSE],2,var)!=0;
-        matrixXreg <- matrixXreg[,varsToLeave,drop=FALSE];
-        variablesNames <- variablesNames[varsToLeave];
-        nVariables <- length(variablesNames);
-    }
-
-    if(interceptIsNeeded){
-        matrixXreg <- cbind(1,matrixXreg);
-        variablesNames <- c("(Intercept)",variablesNames);
-        colnames(matrixXreg) <- variablesNames;
-
-        # Check, if redundant dummies are left. Remove the first if this is the case
-        # Don't do the check for LASSO / RIDGE
-        if(is.null(parameters) && !fast && all(loss!=c("LASSO","RIDGE"))){
-            determValues <- suppressWarnings(determination(matrixXreg[otU, -1, drop=FALSE]));
-            determValues[is.nan(determValues)] <- 0;
-            if(any(determValues==1)){
-                matrixXreg <- matrixXreg[,-(which(determValues==1)[1]+1),drop=FALSE];
-                variablesNames <- colnames(matrixXreg);
-            }
-        }
-        nVariables <- length(variablesNames);
-    }
+    # if(interceptIsNeeded){
+    #     matrixXreg <- cbind(1,matrixXreg);
+    #     variablesNames <- c("(Intercept)",variablesNames);
+    #     colnames(matrixXreg) <- variablesNames;
+    # 
+    #     # Check, if redundant dummies are left. Remove the first if this is the case
+    #     # Don't do the check for LASSO / RIDGE
+    #     if(is.null(parameters) && !fast && all(loss!=c("LASSO","RIDGE"))){
+    #         determValues <- suppressWarnings(determination(matrixXreg[otU, -1, drop=FALSE]));
+    #         determValues[is.nan(determValues)] <- 0;
+    #         if(any(determValues==1)){
+    #             matrixXreg <- matrixXreg[,-(which(determValues==1)[1]+1),drop=FALSE];
+    #             variablesNames <- colnames(matrixXreg);
+    #         }
+    #     }
+    #     nVariables <- length(variablesNames);
+    # }
     variablesNamesAll <- variablesNames;
     # The number of exogenous variables (no ARI elements)
     nVariablesExo <- nVariables;
@@ -1414,94 +1350,94 @@ lightlm <- function(formula, data, subset, na.action,
     if(is.null(parameters)){
         #### Add AR and I elements in the regression ####
         # This is only done, if the regression is estimated. In the other cases it will already have the expanded values
-        if(ariModel){
-            # In case of plogis and pnorm, the AR elements need to be generated from a model, i.e. oes from smooth.
-            if(any(distribution==c("plogis","pnorm"))){
-                if(!requireNamespace("smooth", quietly = TRUE)){
-                    yNew <- abs(fitted(arima(y, order=c(0,1,1))));
-                    yNew[is.na(yNew)] <- min(yNew);
-                    yNew[yNew==0] <- 1E-10;
-                    yNew[] <- log(yNew / (1-yNew));
-                    yNew[is.infinite(yNew) & yNew>0] <- max(yNew[is.finite(yNew)]);
-                    yNew[is.infinite(yNew) & yNew<0] <- min(yNew[is.finite(yNew)]);
-                }
-                else{
-                    yNew <- smooth::oes(y, occurrence="direct", model="MNN", h=1)$fittedModel
-                }
-                ariElements <- xregExpander(yNew, lags=-c(1:ariOrder), gaps="auto")[,-1,drop=FALSE];
-                ariZeroes <- matrix(TRUE,nrow=obsInsample,ncol=ariOrder);
-                for(i in 1:ariOrder){
-                    ariZeroes[(1:i),i] <- FALSE;
-                }
-                ariZeroesLengths <- apply(ariZeroes, 2, sum);
-            }
-            else{
-                ariElements <- xregExpander(y, lags=-c(1:ariOrder), gaps="auto")[,-1,drop=FALSE];
-            }
-
-            # Get rid of "ts" class
-            class(ariElements) <- "matrix";
-            ariNames <- paste0(responseName,"Lag",c(1:ariOrder));
-            ariTransformedNames <- ariNames;
-            colnames(ariElements) <- ariNames;
-            variablesNamesAll <- c(variablesNames,ariNames);
-
-            # Non-zero sequences for the recursion mechanism of ar
-            if(occurrenceModel){
-                ariZeroes <- ariElements == 0;
-                ariZeroesLengths <- apply(ariZeroes, 2, sum);
-            }
-
-            if(arOrder>0){
-                arNames <- paste0(responseName,"Lag",c(1:arOrder));
-                variablesNames <- c(variablesNames,arNames);
-            }
-            else{
-                arNames <- vector("character",0);
-            }
-
-            nVariables <- nVariables + arOrder;
-            # Write down the values for the matrixXreg in the necessary transformations
-            if(any(distribution==c("dexp","dlnorm","dllaplace","dls","dgeom","dpois","dnbinom","dbinom"))){
-                if(any(y[otU]==0)){
-                    # Use Box-Cox if there are zeroes
-                    ariElements[] <- bcTransform(ariElements,0.01);
-                    ariTransformedNames <- paste0(ariNames,"Box-Cox");
-                    colnames(ariElements) <- ariTransformedNames;
-                }
-                else{
-                    ariElements[ariElements<0] <- 0;
-                    ariElements[] <- suppressWarnings(log(ariElements));
-                    ariElements[is.infinite(ariElements)] <- 0;
-                    ariTransformedNames <- paste0(ariNames,"Log");
-                    colnames(ariElements) <- ariTransformedNames;
-                }
-            }
-            else if(distribution=="dbcnorm"){
-                ariElementsOriginal <- ariElements;
-                ariElements[] <- bcTransform(ariElements,0.1);
-                ariTransformedNames <- paste0(ariNames,"Box-Cox");
-                colnames(ariElements) <- ariTransformedNames;
-            }
-            else if(distribution=="dchisq"){
-                ariElements[] <- sqrt(ariElements);
-                ariTransformedNames <- paste0(ariNames,"Sqrt");
-                colnames(ariElements) <- ariTransformedNames;
-            }
-
-            # Fill in zeroes with the mean values
-            ariElements[ariElements==0] <- mean(ariElements[ariElements[,1]!=0,1]);
-
-            matrixXreg <- cbind(matrixXreg, ariElements);
-            # dataWork <- cbind(dataWork, ariElements);
-        }
+        # if(ariModel){
+        #     # In case of plogis and pnorm, the AR elements need to be generated from a model, i.e. oes from smooth.
+        #     if(any(distribution==c("plogis","pnorm"))){
+        #         if(!requireNamespace("smooth", quietly = TRUE)){
+        #             yNew <- abs(fitted(arima(y, order=c(0,1,1))));
+        #             yNew[is.na(yNew)] <- min(yNew);
+        #             yNew[yNew==0] <- 1E-10;
+        #             yNew[] <- log(yNew / (1-yNew));
+        #             yNew[is.infinite(yNew) & yNew>0] <- max(yNew[is.finite(yNew)]);
+        #             yNew[is.infinite(yNew) & yNew<0] <- min(yNew[is.finite(yNew)]);
+        #         }
+        #         else{
+        #             yNew <- smooth::oes(y, occurrence="direct", model="MNN", h=1)$fittedModel
+        #         }
+        #         ariElements <- xregExpander(yNew, lags=-c(1:ariOrder), gaps="auto")[,-1,drop=FALSE];
+        #         ariZeroes <- matrix(TRUE,nrow=obsInsample,ncol=ariOrder);
+        #         for(i in 1:ariOrder){
+        #             ariZeroes[(1:i),i] <- FALSE;
+        #         }
+        #         ariZeroesLengths <- apply(ariZeroes, 2, sum);
+        #     }
+        #     else{
+        #         ariElements <- xregExpander(y, lags=-c(1:ariOrder), gaps="auto")[,-1,drop=FALSE];
+        #     }
+        # 
+        #     # Get rid of "ts" class
+        #     class(ariElements) <- "matrix";
+        #     ariNames <- paste0(responseName,"Lag",c(1:ariOrder));
+        #     ariTransformedNames <- ariNames;
+        #     colnames(ariElements) <- ariNames;
+        #     variablesNamesAll <- c(variablesNames,ariNames);
+        # 
+        #     # Non-zero sequences for the recursion mechanism of ar
+        #     if(occurrenceModel){
+        #         ariZeroes <- ariElements == 0;
+        #         ariZeroesLengths <- apply(ariZeroes, 2, sum);
+        #     }
+        # 
+        #     if(arOrder>0){
+        #         arNames <- paste0(responseName,"Lag",c(1:arOrder));
+        #         variablesNames <- c(variablesNames,arNames);
+        #     }
+        #     else{
+        #         arNames <- vector("character",0);
+        #     }
+        # 
+        #     nVariables <- nVariables + arOrder;
+        #     # Write down the values for the matrixXreg in the necessary transformations
+        #     if(any(distribution==c("dexp","dlnorm","dllaplace","dls","dgeom","dpois","dnbinom","dbinom"))){
+        #         if(any(y[otU]==0)){
+        #             # Use Box-Cox if there are zeroes
+        #             ariElements[] <- bcTransform(ariElements,0.01);
+        #             ariTransformedNames <- paste0(ariNames,"Box-Cox");
+        #             colnames(ariElements) <- ariTransformedNames;
+        #         }
+        #         else{
+        #             ariElements[ariElements<0] <- 0;
+        #             ariElements[] <- suppressWarnings(log(ariElements));
+        #             ariElements[is.infinite(ariElements)] <- 0;
+        #             ariTransformedNames <- paste0(ariNames,"Log");
+        #             colnames(ariElements) <- ariTransformedNames;
+        #         }
+        #     }
+        #     else if(distribution=="dbcnorm"){
+        #         ariElementsOriginal <- ariElements;
+        #         ariElements[] <- bcTransform(ariElements,0.1);
+        #         ariTransformedNames <- paste0(ariNames,"Box-Cox");
+        #         colnames(ariElements) <- ariTransformedNames;
+        #     }
+        #     else if(distribution=="dchisq"){
+        #         ariElements[] <- sqrt(ariElements);
+        #         ariTransformedNames <- paste0(ariNames,"Sqrt");
+        #         colnames(ariElements) <- ariTransformedNames;
+        #     }
+        # 
+        #     # Fill in zeroes with the mean values
+        #     ariElements[ariElements==0] <- mean(ariElements[ariElements[,1]!=0,1]);
+        # 
+        #     matrixXreg <- cbind(matrixXreg, ariElements);
+        #     # dataWork <- cbind(dataWork, ariElements);
+        # }
 
         # Set bounds for B as NULL. Then amend if needed
         BLower <- NULL;
         BUpper <- NULL;
         if(is.null(B)){
             #### I(0) initialisation ####
-            if(iOrder==0){
+            # if(iOrder==0){
                 if(any(distribution==c("dlnorm","dllaplace","dls","dlgnorm","dnbinom",
                                        "dinvgauss","dgamma","dexp"))){
                     if(any(y[otU]==0)){
@@ -1578,100 +1514,100 @@ lightlm <- function(formula, data, subset, na.action,
                     BLower <- -Inf;
                     BUpper <- Inf;
                 }
-            }
+            # }
             #### I(d) initialisation ####
             # If this is an I(d) model, do the primary estimation in differences
-            else{
-                # Use only AR elements of the matrix, take differences for the initialisation purposes
-                # This matrix does not contain columns for iOrder and has fewer observations to match diff(y)
-                matrixXregForDiffs <- matrixXreg[otU,-(nVariables+1:iOrder),drop=FALSE];
-                if(arOrder>0){
-                    matrixXregForDiffs[-c(1:iOrder),nVariablesExo+c(1:arOrder)] <- diff(matrixXregForDiffs[,nVariablesExo+c(1:arOrder)],
-                                                                                        differences=iOrder);
-                    matrixXregForDiffs <- matrixXregForDiffs[-c(1:iOrder),,drop=FALSE];
-                    matrixXregForDiffs[c(1:iOrder),nVariablesExo+c(1:arOrder)] <- colMeans(matrixXregForDiffs[,nVariablesExo+c(1:arOrder), drop=FALSE]);
-                }
-                else{
-                    matrixXregForDiffs <- matrixXregForDiffs[-c(1:iOrder),,drop=FALSE];
-                }
-
-                # Check variability in the new data. Have we removed important observations?
-                noVariability <- apply(matrixXregForDiffs[,-interceptIsNeeded,drop=FALSE]==
-                                           matrix(matrixXregForDiffs[1,-interceptIsNeeded],
-                                                  nrow(matrixXregForDiffs),ncol(matrixXregForDiffs)-interceptIsNeeded,
-                                                  byrow=TRUE),
-                                       2,all);
-                if(any(noVariability)){
-                    warning("Some variables had no variability after taking differences. ",
-                            "This might mean that all the variability for them happened ",
-                            "in the very beginning of the series. We'll try to fix this, but the model might fail.",
-                            call.=FALSE);
-                    matrixXregForDiffs[1,which(noVariability)+1] <- rnorm(sum(noVariability));
-                }
-
-                if(any(distribution==c("dexp","dlnorm","dllaplace","dls","dlgnorm","dgeom","dpois","dnbinom",
-                                       "dinvgauss","dgamma"))){
-                    B <- .lm.fit(matrixXregForDiffs,diff(log(y[otU]),differences=iOrder))$coefficients;
-                }
-                else if(distribution=="dbinom"){
-                    # Smooth the original series
-                    ySupSmu <- supsmu(which(otU), y[otU])$y;
-                    # Get estimates of parameters based on the smoothed series
-                    B <- .lm.fit(matrixXreg[otU,,drop=FALSE],ySupSmu)$coefficients;
-                }
-                else if(any(distribution==c("plogis","pnorm"))){
-                    # Box-Cox transform in order to get meaningful initials
-                    B <- .lm.fit(matrixXregForDiffs,diff(bcTransform(y[otU],0.01),differences=iOrder))$coefficients;
-                }
-                else if(distribution=="dbcnorm"){
-                    if(!aParameterProvided){
-                        B <- c(0.1,.lm.fit(matrixXregForDiffs,diff(bcTransform(y[otU],0.1),differences=iOrder))$coefficients);
-                    }
-                    else{
-                        B <- c(.lm.fit(matrixXregForDiffs,diff(bcTransform(y[otU],0.1),differences=iOrder))$coefficients);
-                    }
-                }
-                else if(distribution=="dbeta"){
-                    # In Beta we set B to be twice longer, using first half of parameters for shape1, and the second for shape2
-                    # Transform y, just in case, to make sure that it does not hit boundary values
-                    B <- .lm.fit(matrixXregForDiffs,
-                                 diff(log(y/(1-y)),differences=iOrder)[c(1:nrow(matrixXregForDiffs))])$coefficients;
-                    B <- c(B, -B);
-                }
-                else if(distribution=="dlogitnorm"){
-                    B <- .lm.fit(matrixXregForDiffs,
-                                 diff(log(y/(1-y)),differences=iOrder)[c(1:nrow(matrixXregForDiffs))])$coefficients;
-                }
-                else if(distribution=="dchisq"){
-                    B <- .lm.fit(matrixXregForDiffs,diff(sqrt(y[otU]),differences=iOrder))$coefficients;
-                    if(aParameterProvided){
-                        BLower <- rep(-Inf,length(B));
-                        BUpper <- rep(Inf,length(B));
-                    }
-                    else{
-                        B <- c(1, B);
-                        BLower <- c(0,rep(-Inf,length(B)-1));
-                        BUpper <- rep(Inf,length(B));
-                    }
-                }
-                else if(distribution=="dt"){
-                    B <- .lm.fit(matrixXregForDiffs,diff(y[otU],differences=iOrder))$coefficients;
-                    if(aParameterProvided){
-                        BLower <- rep(-Inf,length(B));
-                        BUpper <- rep(Inf,length(B));
-                    }
-                    else{
-                        B <- c(2, B);
-                        BLower <- c(0,rep(-Inf,length(B)-1));
-                        BUpper <- rep(Inf,length(B));
-                    }
-                }
-                else{
-                    B <- .lm.fit(matrixXregForDiffs,diff(y[otU],differences=iOrder))$coefficients;
-                    BLower <- -Inf;
-                    BUpper <- Inf;
-                }
-            }
+            # else{
+            #     # Use only AR elements of the matrix, take differences for the initialisation purposes
+            #     # This matrix does not contain columns for iOrder and has fewer observations to match diff(y)
+            #     matrixXregForDiffs <- matrixXreg[otU,-(nVariables+1:iOrder),drop=FALSE];
+            #     if(arOrder>0){
+            #         matrixXregForDiffs[-c(1:iOrder),nVariablesExo+c(1:arOrder)] <- diff(matrixXregForDiffs[,nVariablesExo+c(1:arOrder)],
+            #                                                                             differences=iOrder);
+            #         matrixXregForDiffs <- matrixXregForDiffs[-c(1:iOrder),,drop=FALSE];
+            #         matrixXregForDiffs[c(1:iOrder),nVariablesExo+c(1:arOrder)] <- colMeans(matrixXregForDiffs[,nVariablesExo+c(1:arOrder), drop=FALSE]);
+            #     }
+            #     else{
+            #         matrixXregForDiffs <- matrixXregForDiffs[-c(1:iOrder),,drop=FALSE];
+            #     }
+            # 
+            #     # Check variability in the new data. Have we removed important observations?
+            #     noVariability <- apply(matrixXregForDiffs[,-interceptIsNeeded,drop=FALSE]==
+            #                                matrix(matrixXregForDiffs[1,-interceptIsNeeded],
+            #                                       nrow(matrixXregForDiffs),ncol(matrixXregForDiffs)-interceptIsNeeded,
+            #                                       byrow=TRUE),
+            #                            2,all);
+            #     if(any(noVariability)){
+            #         warning("Some variables had no variability after taking differences. ",
+            #                 "This might mean that all the variability for them happened ",
+            #                 "in the very beginning of the series. We'll try to fix this, but the model might fail.",
+            #                 call.=FALSE);
+            #         matrixXregForDiffs[1,which(noVariability)+1] <- rnorm(sum(noVariability));
+            #     }
+            # 
+            #     if(any(distribution==c("dexp","dlnorm","dllaplace","dls","dlgnorm","dgeom","dpois","dnbinom",
+            #                            "dinvgauss","dgamma"))){
+            #         B <- .lm.fit(matrixXregForDiffs,diff(log(y[otU]),differences=iOrder))$coefficients;
+            #     }
+            #     else if(distribution=="dbinom"){
+            #         # Smooth the original series
+            #         ySupSmu <- supsmu(which(otU), y[otU])$y;
+            #         # Get estimates of parameters based on the smoothed series
+            #         B <- .lm.fit(matrixXreg[otU,,drop=FALSE],ySupSmu)$coefficients;
+            #     }
+            #     else if(any(distribution==c("plogis","pnorm"))){
+            #         # Box-Cox transform in order to get meaningful initials
+            #         B <- .lm.fit(matrixXregForDiffs,diff(bcTransform(y[otU],0.01),differences=iOrder))$coefficients;
+            #     }
+            #     else if(distribution=="dbcnorm"){
+            #         if(!aParameterProvided){
+            #             B <- c(0.1,.lm.fit(matrixXregForDiffs,diff(bcTransform(y[otU],0.1),differences=iOrder))$coefficients);
+            #         }
+            #         else{
+            #             B <- c(.lm.fit(matrixXregForDiffs,diff(bcTransform(y[otU],0.1),differences=iOrder))$coefficients);
+            #         }
+            #     }
+            #     else if(distribution=="dbeta"){
+            #         # In Beta we set B to be twice longer, using first half of parameters for shape1, and the second for shape2
+            #         # Transform y, just in case, to make sure that it does not hit boundary values
+            #         B <- .lm.fit(matrixXregForDiffs,
+            #                      diff(log(y/(1-y)),differences=iOrder)[c(1:nrow(matrixXregForDiffs))])$coefficients;
+            #         B <- c(B, -B);
+            #     }
+            #     else if(distribution=="dlogitnorm"){
+            #         B <- .lm.fit(matrixXregForDiffs,
+            #                      diff(log(y/(1-y)),differences=iOrder)[c(1:nrow(matrixXregForDiffs))])$coefficients;
+            #     }
+            #     else if(distribution=="dchisq"){
+            #         B <- .lm.fit(matrixXregForDiffs,diff(sqrt(y[otU]),differences=iOrder))$coefficients;
+            #         if(aParameterProvided){
+            #             BLower <- rep(-Inf,length(B));
+            #             BUpper <- rep(Inf,length(B));
+            #         }
+            #         else{
+            #             B <- c(1, B);
+            #             BLower <- c(0,rep(-Inf,length(B)-1));
+            #             BUpper <- rep(Inf,length(B));
+            #         }
+            #     }
+            #     else if(distribution=="dt"){
+            #         B <- .lm.fit(matrixXregForDiffs,diff(y[otU],differences=iOrder))$coefficients;
+            #         if(aParameterProvided){
+            #             BLower <- rep(-Inf,length(B));
+            #             BUpper <- rep(Inf,length(B));
+            #         }
+            #         else{
+            #             B <- c(2, B);
+            #             BLower <- c(0,rep(-Inf,length(B)-1));
+            #             BUpper <- rep(Inf,length(B));
+            #         }
+            #     }
+            #     else{
+            #         B <- .lm.fit(matrixXregForDiffs,diff(y[otU],differences=iOrder))$coefficients;
+            #         BLower <- -Inf;
+            #         BUpper <- Inf;
+            #     }
+            # }
 
             if(distribution=="dnbinom"){
                 if(!aParameterProvided){
